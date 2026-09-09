@@ -29,8 +29,8 @@ export function PaperclipLoading({ className }: { className?: string }) {
       role="status"
       className={cn("flex min-h-dvh w-full items-center justify-center", className)}
     >
-      <AnimatedPaperclipIcon className="h-24 w-24 text-muted-foreground" />
-      <span className="sr-only">Loading…</span>
+      <AnimatedPaperclipIcon className="h-24 w-24 text-primary" />
+      <span className="sr-only">Loading Paperclip for SMIT…</span>
     </div>
   );
 }
