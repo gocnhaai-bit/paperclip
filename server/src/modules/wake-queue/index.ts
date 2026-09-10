@@ -12,6 +12,7 @@ import {
   createDiscardQueuedComment,
   createEditQueuedComment,
   createReorderQueuedComments,
+  createSteerQueuedWakeComment,
 } from "./application/queued-comment-use-cases.js";
 import type {
   IssueSnapshot,
@@ -51,6 +52,8 @@ export type {
   QueuedCommentActor,
   QueuedCommentIssueContext,
   QueuedCommentQueueSnapshot,
+  SteerQueuedWakeCommentInput,
+  SteerQueuedWakeCommentResult,
 } from "./application/queued-comment-ports.js";
 export type { QueuedCommentQueuePostgresAdapterDeps } from "./adapters/queued-comment-postgres.js";
 
@@ -120,6 +123,7 @@ export function createQueuedCommentQueue(db: Db, deps: QueuedCommentQueuePostgre
     editQueuedComment: createEditQueuedComment({ issueLock }),
     reorderQueuedComments: createReorderQueuedComments({ issueLock }),
     discardQueuedComment: createDiscardQueuedComment({ issueLock }),
+    steerQueuedWakeComment: createSteerQueuedWakeComment({ issueLock }),
   };
 }
 
