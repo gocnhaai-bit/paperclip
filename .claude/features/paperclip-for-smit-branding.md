@@ -2,15 +2,17 @@
 
 ## Status
 
-Implemented and runtime-verified on branch `custom/brand` after Sếp approved the `Paperclip for SMIT` direction on 2026-09-10. Core branding commit: `6c2223fb79b0babad705a549e473ddc804151c74`.
+Implemented and runtime-verified on branch `custom/brand` after Sếp approved the `Paperclip for SMIT` direction on 2026-09-10. Original core branding commit: `6c2223fb79b0babad705a549e473ddc804151c74`; after the Phase 7 rebase onto upstream `0d8bbf7cf4fb90597e1b352c7626a78e5c196992`, the equivalent branding commit is `e9aeeeb9a` and the branch tip is `e73a790df`.
 
 Verification completed:
 
 - focused branding tests, UI typecheck, production build and token gates pass;
 - all changed foreground/background pairs meet WCAG AA in light and dark modes;
 - Sếp confirmed the host-aligned KPI Dashboard at desktop and 390px mobile widths in light and dark modes;
-- rollback drill booted stock `master`, retained the plugin/data/marker, then restored this branch and exact branding commit;
-- runtime ends healthy on `custom/brand` with the external KPI plugin ready.
+- Phase 7 fast-forwarded `master` by 23 commits, rebased this branch without conflict, applied 17 upstream database migrations from a verified external backup, and rebuilt the runtime;
+- the Phase 7 rollback drill booted stock `master`, retained the plugin/data/persistence marker and live KPI availability, then restored this branch;
+- local and remote health report `authenticated/private`, `bootstrapStatus=ready`, and branded commit `e73a790df35d6fc599f92f1d7647e9a2d15b18cc`;
+- runtime ends healthy on `custom/brand` with the external KPI plugin ready and the browser title ending in `Paperclip for SMIT`.
 
 ## Contract
 
