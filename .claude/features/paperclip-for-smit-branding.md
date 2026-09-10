@@ -2,7 +2,15 @@
 
 ## Status
 
-Implemented on branch `custom/brand` after Sếp approved `paperclip-for-smit-brand-preview.html` on 2026-09-10. Pending independent review, runtime visual verification and commit.
+Implemented and runtime-verified on branch `custom/brand` after Sếp approved the `Paperclip for SMIT` direction on 2026-09-10. Core branding commit: `6c2223fb79b0babad705a549e473ddc804151c74`.
+
+Verification completed:
+
+- focused branding tests, UI typecheck, production build and token gates pass;
+- all changed foreground/background pairs meet WCAG AA in light and dark modes;
+- Sếp confirmed the host-aligned KPI Dashboard at desktop and 390px mobile widths in light and dark modes;
+- rollback drill booted stock `master`, retained the plugin/data/marker, then restored this branch and exact branding commit;
+- runtime ends healthy on `custom/brand` with the external KPI plugin ready.
 
 ## Contract
 
