@@ -1304,10 +1304,16 @@ const PencilIcon = makeLucideIcon(
 
 export function SidebarLink({ context }: PluginSidebarProps) {
   const hostNavigation = useHostNavigation();
+  const { pathname } = useHostLocation();
+  const wikiPath = `/${context.companyPrefix ?? ""}/wiki`.replace("//", "/");
+  const active = pathname === wikiPath || pathname.startsWith(`${wikiPath}/`);
   return (
     <a
       {...hostNavigation.linkProps("/wiki")}
-      className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-foreground/80 transition-colors hover:bg-accent/50 hover:text-foreground"
+      aria-current={active ? "page" : undefined}
+      className={`flex items-center gap-2.5 mx-2 rounded-lg px-2 py-1.5 pointer-coarse:py-1 text-(length:--text-compact) font-medium transition-colors ${active
+        ? "bg-sidebar-accent text-sidebar-accent-foreground"
+        : "text-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
       style={{ textDecoration: "none" }}
     >
       <span aria-hidden="true" className="shrink-0">

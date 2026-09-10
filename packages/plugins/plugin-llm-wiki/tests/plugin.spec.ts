@@ -738,18 +738,30 @@ describe("LLM Wiki plugin scaffold", () => {
   });
 
   it("renders a host-aligned sidebar link with an open-book icon", () => {
+    mockPathname = "/PAP/wiki/page/wiki/index.md";
     const markup = renderToStaticMarkup(createElement(SidebarLink, {
       context: { companyId: COMPANY_ID, companyPrefix: "PAP" },
     } as never));
 
     expect(markup).toContain('href="/PAP/wiki"');
-    expect(markup).toContain("gap-2.5 px-3 py-2 text-[13px] font-medium");
-    expect(markup).toContain("hover:bg-accent/50 hover:text-foreground");
+    expect(markup).toContain('aria-current="page"');
+    expect(markup).toContain("gap-2.5 mx-2 rounded-lg px-2 py-1.5 pointer-coarse:py-1 text-(length:--text-compact) font-medium");
+    expect(markup).toContain("bg-sidebar-accent text-sidebar-accent-foreground");
     expect(markup).toContain("<svg");
+    expect(markup).toContain("width:16px;height:16px");
     expect(markup).toContain("M12 7v14");
     expect(markup).not.toContain("Wiki plugin");
-    expect(markup).not.toContain("border-radius:999");
     expect(markup).not.toContain("📖");
+  });
+
+  it("does not highlight the Wiki sidebar link on another route", () => {
+    mockPathname = "/PAP/issues";
+    const markup = renderToStaticMarkup(createElement(SidebarLink, {
+      context: { companyId: COMPANY_ID, companyPrefix: "PAP" },
+    } as never));
+
+    expect(markup).not.toContain("aria-current");
+    expect(markup).toContain("text-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground");
   });
 
   it("ships Karpathy-pattern schema and workflow prompts by default", () => {
