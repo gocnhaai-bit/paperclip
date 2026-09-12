@@ -1,0 +1,64 @@
+{
+  "name": "@paperclipai/adapter-dsh-ssh",
+  "version": "0.2.0",
+  "description": "Lab-only SSH adapter for dsh-paperclip-runner draft-2",
+  "type": "module",
+  "license": "MIT",
+  "author": "Paperclip",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paperclipai/paperclip",
+    "directory": "packages/adapters/dsh-ssh"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server/index.ts",
+    "./ui": "./src/ui/index.ts",
+    "./ui-parser": "./ui-parser.cjs"
+  },
+  "paperclip": {
+    "adapterUiParser": "1.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./server": {
+        "types": "./dist/server/index.d.ts",
+        "import": "./dist/server/index.js"
+      },
+      "./ui": {
+        "types": "./dist/ui/index.d.ts",
+        "import": "./dist/ui/index.js"
+      },
+      "./ui-parser": "./ui-parser.cjs"
+    },
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "provenance": true
+  },
+  "files": [
+    "dist",
+    "ui-parser.cjs"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@paperclipai/adapter-utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  },
+  "engines": {
+    "node": ">=24.11.0"
+  }
+}

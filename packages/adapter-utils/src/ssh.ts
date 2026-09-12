@@ -29,6 +29,7 @@ export interface SshConnectionConfig {
   privateKey: string | null;
   knownHosts: string | null;
   strictHostKeyChecking: boolean;
+  identitiesOnly?: boolean;
 }
 
 export interface SshCommandResult {
@@ -372,7 +373,7 @@ async function withTempFile(
 }
 
 async function createSshAuthArgs(
-  config: Pick<SshConnectionConfig, "privateKey" | "knownHosts" | "strictHostKeyChecking">,
+  config: Pick<SshConnectionConfig, "privateKey" | "knownHosts" | "strictHostKeyChecking" | "identitiesOnly">,
 ): Promise<{ args: string[]; cleanup: () => Promise<void> }> {
   const tempFiles: Array<() => Promise<void>> = [];
   const sshArgs = [
@@ -382,6 +383,7 @@ async function createSshAuthArgs(
     "ConnectTimeout=10",
     "-o",
     `StrictHostKeyChecking=${config.strictHostKeyChecking ? "yes" : "no"}`,
+    ...(config.identitiesOnly ? ["-o", "IdentitiesOnly=yes"] : []),
   ];
 
   if (config.strictHostKeyChecking) {
