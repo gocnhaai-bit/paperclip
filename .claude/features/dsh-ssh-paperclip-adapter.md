@@ -2,7 +2,7 @@
 
 ## Status
 
-External adapter package `0.2.0` is installed in the local Paperclip instance. Agent `DSH Pilot` is created with heartbeat disabled. Assignment dispatch through the dedicated SSH forced command to the pinned DSH runtime on the VPS is verified. Model/provider setup and successful task completion are intentionally deferred.
+External adapter package `0.2.0` is installed in the local Paperclip instance. The replacement `DSH Pilot` agent is created with heartbeat disabled after the original agent was terminated. Assignment dispatch through the dedicated SSH forced command to the pinned DSH runtime on the VPS is verified after the worker dependency relocation. Model/provider setup and successful task completion are intentionally deferred.
 
 ## Contract
 
@@ -98,20 +98,24 @@ The synthetic profile remains a development-only exception: it runs the existing
 - VPS draft-2 native mock suite: 12/12 tests pass for strict version/auth, DSH final+receipt, no persistent/argv JWT sentinel, non-secret idempotency digest, DSH session persistence, native cancellation/session flush, post-handoff crash/no-restart, 60-minute bound, fixed profile metadata, and pinned Paperclip authority/executable.
 - Native cancel proof created two real task-owned systemd scopes and verified both inactive; no draft-2 gate units remained active after the final suite.
 - Pinned runtime native suite also passes 12/12 after adding only the verified worker and scope-fencing overlay.
-- Real assignment dispatch starts DSH and fails at the intentionally unconfigured provider boundary.
+- Read-only dependency audit verifies relocated worker module imports, all manifest hashes, diagnostic `ready`, and `MISSING_CREDENTIAL` with the old dependency error absent.
+- Replacement-agent E2E run `23bcb686-0fad-4da8-9e5f-8134233581c5` independently verifies assignment dispatch to native `ready`, idle, session flush and the deferred provider boundary.
 - Draft-1 supervisor hash remains `7c3e7161b69fb849053a1919f03d374eedc217fe73fefec8ded1ee7d5fbb6308`.
-- `dsh-web.service` remained active with unchanged PID during verification.
+- `dsh-web.service` remained active during verification.
 
 The native synthetic profile uses DSH's mock provider and a fake in-memory Paperclip API response. It proves DSH session lifecycle, cancellation, persistence, systemd scope cleanup, FD handoff and receipt gating without a billable provider request. The fixed `router-smit` profile and live Paperclip/provider integration remain unverified and require the next approval-gated smoke.
 
 ## Connection verification
 
-- Creating and assigning `SMI-9` to `DSH Pilot` automatically created final hardened Paperclip run `ae2da654-9adc-4327-a9e3-b3ef686b6502`.
-- The hardened run used the required dedicated private key with `IdentitiesOnly=yes`; no SSH-agent/default identity fallback is allowed.
-- VPS evidence for that exact run contains the durable request, credential fence, worker handshake, generated DSH profile, worker exit and terminal runner state.
-- The run failed only after DSH startup because model/provider configuration is not installed yet. This is the expected boundary for the connection-only acceptance criterion.
-- Both connection-probe issues were closed after verification. Heartbeat remains disabled.
-- No draft-2 systemd unit remains active; `dsh-web.service` remains active with unchanged PID.
+- Original agent `d5a1b49e-cb18-48e8-9a84-d2105e7ad516` remains terminated as immutable audit history; Paperclip deliberately forbids resuming terminated records.
+- Replacement `DSH Pilot` agent `3aedd01a-a2f2-4278-a799-c81054ee3a35` preserves the restricted adapter configuration and heartbeat-disabled policy.
+- Creating and assigning `SMI-12` to the replacement agent automatically created Paperclip run `23bcb686-0fad-4da8-9e5f-8134233581c5`.
+- The run used the required dedicated private key with `IdentitiesOnly=yes`; no SSH-agent/default identity fallback is allowed.
+- VPS evidence for that exact run contains the durable request, credential fence, worker handshake, generated DSH profile, native `ready`, native idle, session flush, result, worker exit and terminal runner state.
+- The old `Cannot find package '@deepseek-ai/dsh-session'` error is absent. The session records `MISSING_CREDENTIAL` for `router-smit`, which is the intentionally deferred provider boundary.
+- `completed=false`; no final disposition receipt was manufactured.
+- The E2E probe issue was closed after verification. Heartbeat remains disabled.
+- No draft-2 systemd unit remains active; `dsh-web.service` remains active.
 
 ## Deferred model readiness
 
