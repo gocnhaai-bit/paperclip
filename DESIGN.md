@@ -1,6 +1,8 @@
 # Paperclip Design Principles
 
-**Status:** v0.3 — anchor document for design-language simplification. Governs structure, not brand. Brand values (color, type, iconography) are intentionally unspecified: they are being redesigned and will land as token values only. Nothing in `ui/` may hardcode them. Spacing/radius scales are likewise TBD pending the token audit (see Principle 3).
+**Status:** v0.4 — Warm Workspace redesign authorized. The v0.3 simplification constraints ("zero visual change", "no visual redesign") governed the token-extraction run only; they do not block the user-approved Warm Workspace redesign, which lands as token-value changes in `ui/src/index.css` plus shared-shell restyle through existing primitives. All structural rules below (token-only values, one component per job, hierarchy through structure, systematic status) remain in force during the redesign.
+
+v0.4 changes: redesign scope recorded; brand tier is no longer "unspecified" — the Warm Workspace palette (warm ivory canvas, sage primary, navy text) is the approved brand direction and must live only in the token layer; the target spacing scale (4/8/12/16/24/32), control radius 8, and card radius ~12 are the approved scale decisions anticipated by Principle 3, applied when touching a surface rather than via a repo-wide sweep (today's derived ladder already serves them: spacing is 4-based, radius anchor = 8px, radius-xl ≈ 11.2px covers cards until the ladder is retuned).
 
 Changes from v0.2: token layer location corrected to the repo's real source (`ui/src/index.css`); existing token tiers inventoried; snapshot-coverage scope bounded for Run 1; the issue→task copy rename moved out of the zero-visual-change run.
 
@@ -28,7 +30,7 @@ Existing tiers already in index.css (~80+ tokens) — extraction maps to these o
 
 1. **One way to say each thing.** One component per job. One Button, one Card, one Badge, one Table, one EmptyState. Variants are props, not new components. Before creating a component, prove no existing one covers the job.
 2. **Tokens are the only source of visual values.** All color, spacing, radius, type size/weight, shadow, and motion values come from the token layer. No hex, no raw px, no ad-hoc Tailwind arbitrary values (`p-[13px]`) in components. If a needed value doesn't exist, add a token — don't inline it. Tailwind palette classes (`bg-red-500`, `text-zinc-400`, etc.) ARE hardcoded values in spirit: they name a literal color, not a semantic role. They are in-scope debt scheduled for a dedicated future run (Run 4, cluster-by-cluster mapping to semantic tokens per doc/design/DECISION-SHEET.md B2) and are not currently gated by check-token-gates. Exception (doc/design/DECISION-SHEET.md B1 user ruling): first-party intentional one-off decoration on demo/UX-lab surfaces stays inline and allowlisted rather than minted as singleton tokens.
-3. **Spacing routes through tokens; the scale comes later.** During simplification, extract every spacing and radius value verbatim into tokens — do not normalize, round, or invent a scale. The final scale is a design decision made by a human after reviewing the token audit. Structural rules apply now: vertical rhythm within a container uses one gap value, not per-element margins, and siblings never carry both margin and gap.
+3. **Spacing routes through tokens; the scale comes later.** During simplification, extract every spacing and radius value verbatim into tokens — do not normalize, round, or invent a scale. The final scale is a design decision made by a human after reviewing the token audit. (For Warm Workspace surfaces, that human decision exists — see Status v0.4 above; Principle 3's "comes later" applies to the still-unaudited rest of the app.) Structural rules apply now: vertical rhythm within a container uses one gap value, not per-element margins, and siblings never carry both margin and gap.
 4. **Hierarchy through structure, not decoration.** Prefer position, size, and weight over borders, backgrounds, and dividers. Every border, divider, and background fill must justify itself; when in doubt, remove it. A screen should survive the removal of one visual layer.
 5. **Status is systematic.** States like running / paused / blocked / awaiting-approval / over-budget map to a single semantic status token set used identically everywhere (badge, row, chart, log). An operator learns the vocabulary once.
 6. **Machine values look machine-made.** IDs, costs, token counts, timestamps, and log output use the monospace token and consistent formatting helpers. Never format these ad hoc per screen.
@@ -57,7 +59,7 @@ Aspirational (NOT gating this run): no duplicate components; every component has
 
 ## Out of scope (do not do during simplification)
 
-No visual redesign, no new colors or typefaces, no layout restructuring, no new dependencies beyond snapshot tooling, no component consolidation/merges (audit + recommend only), no copy renames, no changes to server code or app logic. Simplification means fewer parts, same product.
+These limits bind the v0.3 simplification/extraction run only; they are not a ban on the approved Warm Workspace redesign (see Status above). During simplification: no visual redesign, no new colors or typefaces, no layout restructuring, no new dependencies beyond snapshot tooling, no component consolidation/merges (audit + recommend only), no copy renames, no changes to server code or app logic. Simplification means fewer parts, same product.
 
 ## Prior art (read before auditing)
 

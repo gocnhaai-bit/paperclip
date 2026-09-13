@@ -72,27 +72,30 @@
 :root {
   color-scheme: light;
   --radius: 0.5rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  /* Warm Workspace palette (user-approved 2026-09-13): warm ivory canvas,
+     sage primary, navy text. Contrast-verified AA; see inline pairs below.
+     Status/destructive/chart tokens stay semantically independent of sage. */
+  --background: oklch(0.98 0.0057 84.6); /* #FAF8F4 warm ivory canvas */
+  --foreground: oklch(0.254 0.0366 257.1); /* #172334 navy — 14.9:1 on canvas */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.254 0.0366 257.1);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.5117 0.129 148.93);
+  --popover-foreground: oklch(0.254 0.0366 257.1);
+  --primary: oklch(0.511 0.048 156); /* #506F5B sage — primary-foreground 5.35:1 */
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.95 0.0099 87.5); /* #F1EEE7 warm muted surface */
+  --secondary-foreground: oklch(0.254 0.0366 257.1);
+  --muted: oklch(0.95 0.0099 87.5);
+  --muted-foreground: oklch(0.49 0.0266 260.7); /* #586170 — 5.9:1 on canvas */
+  --accent: oklch(0.95 0.0099 87.5);
+  --accent-foreground: oklch(0.254 0.0366 257.1);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.5117 0.129 148.93);
-  --scrollbar-thumb: oklch(0.7 0 0);
-  --scrollbar-thumb-hover: oklch(0.6 0 0);
+  --border: oklch(0.893 0.0112 123.5); /* #DADDD5 warm hairline */
+  --input: oklch(0.893 0.0112 123.5);
+  --ring: oklch(0.511 0.048 156);
+  --scrollbar-thumb: oklch(0.75 0.01 90);
+  --scrollbar-thumb-hover: oklch(0.65 0.01 90);
   --scrollbar-size: 8px;
   --scrollbar-radius: 999px;
   --chart-1: oklch(0.87 0 0);
@@ -100,14 +103,14 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.5117 0.129 148.93);
+  --sidebar: oklch(0.962 0.0098 87.5); /* #F5F2EB warm sidebar */
+  --sidebar-foreground: oklch(0.254 0.0366 257.1);
+  --sidebar-primary: oklch(0.511 0.048 156);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.9499 0.0215 154.12);
-  --sidebar-accent-foreground: oklch(0.4226 0.1052 149.56);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-accent: oklch(0.931 0.0201 128.7); /* #E4EBDD sage selected */
+  --sidebar-accent-foreground: oklch(0.381 0.0459 155.4); /* #2E4A38 — 8.0:1 on selected */
+  --sidebar-border: oklch(0.893 0.0112 123.5);
+  --sidebar-ring: oklch(0.511 0.048 156);
   --chip-match-title-bg: oklch(0.97 0.02 265);
   --chip-match-title-fg: oklch(0.4 0.13 265);
   --chip-match-title-border: oklch(0.85 0.05 265);
@@ -323,7 +326,7 @@
   /* Agent-comment comparison fill used by TaskChatLab. The chosen production
      treatment sits directly on the page surface; this token keeps the darker
      card available as an explicit lab alternative. */
-  --bubble-agent: oklch(0.97 0 0);
+  --bubble-agent: oklch(0.95 0.0099 87.5); /* warm muted surface, matches --secondary */
   --bubble-agent-card-padding-inline: 0.875rem;
 
   /* Redesigned thread viewport bound: lets the thread own its scroll (auto-
@@ -353,44 +356,46 @@
 }
 
 .dark {
-  --background: oklch(0.205 0 0);
-  --foreground: oklch(0.985 0 0);
+  /* Warm Workspace dark: warm charcoal, separated surfaces, light sage
+     primary that keeps AA on the dark canvas. */
+  --background: oklch(0.248 0.008 84.6); /* #23211D warm charcoal */
+  --foreground: oklch(0.953 0.0086 84.6); /* #F2EFE9 — 14.0:1 on bg */
   --side-panel-bg: var(--background);
-  --side-panel-fg: oklch(0.985 0 0);
+  --side-panel-fg: oklch(0.953 0.0086 84.6);
   --streamlined-task-detail-bg: var(--background);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.7513 0.1412 149.83);
-  --primary-foreground: oklch(0.205 0 0);
-  --bubble-agent: oklch(0.185 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.637 0.237 25.331); /* Gallery feedback round 1: user preferred master's original dark destructive red over the preset's softer 0.704 0.191 22.216. */
+  --card: oklch(0.281 0.0094 88.8); /* #2B2924 surface lifted off bg */
+  --card-foreground: oklch(0.953 0.0086 84.6);
+  --popover: oklch(0.281 0.0094 88.8);
+  --popover-foreground: oklch(0.953 0.0086 84.6);
+  --primary: oklch(0.757 0.0409 153.3); /* #9DB8A4 light sage */
+  --primary-foreground: oklch(0.254 0.0366 257.1); /* navy on sage — 7.4:1 */
+  --bubble-agent: oklch(0.225 0.008 84.6); /* warm, slightly darker than the dark canvas */
+  --secondary: oklch(0.31 0.0113 84.6); /* #33302A warm muted */
+  --secondary-foreground: oklch(0.953 0.0086 84.6);
+  --muted: oklch(0.31 0.0113 84.6);
+  --muted-foreground: oklch(0.77 0.0147 88.7); /* #B8B4AA — 6.4:1 on muted */
+  --accent: oklch(0.31 0.0113 84.6);
+  --accent-foreground: oklch(0.953 0.0086 84.6);
+  --destructive: oklch(0.7 0.2 25.3); /* #ff5f5a. History: Gallery feedback round 1 preferred master's original dark red (0.637 0.237 25.331) over the preset's softer one; Warm Workspace (2026-09-13, user-approved) lifts lightness to restore AA on the lightened dark surfaces — 4.4–5.4:1 across bg/card/muted/sidebar. Hue stays red, independent of sage. */
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.7513 0.1412 149.83);
-  --scrollbar-thumb: oklch(0.4 0 0);
-  --scrollbar-thumb-hover: oklch(0.5 0 0);
+  --border: oklch(0.953 0.0086 84.6 / 10%);
+  --input: oklch(0.953 0.0086 84.6 / 15%);
+  --ring: oklch(0.757 0.0409 153.3);
+  --scrollbar-thumb: oklch(0.42 0.01 90);
+  --scrollbar-thumb-hover: oklch(0.52 0.01 90);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.7513 0.1412 149.83);
-  --sidebar-primary-foreground: oklch(0.205 0 0);
-  --sidebar-accent: oklch(0.3257 0.0459 150.83);
-  --sidebar-accent-foreground: oklch(0.8189 0.1145 150.57);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar: oklch(0.265 0.0095 88.8); /* #272520 warm dark sidebar */
+  --sidebar-foreground: oklch(0.953 0.0086 84.6);
+  --sidebar-primary: oklch(0.757 0.0409 153.3);
+  --sidebar-primary-foreground: oklch(0.254 0.0366 257.1);
+  --sidebar-accent: oklch(0.392 0.0275 154.9); /* #3A4A3F deep sage selected */
+  --sidebar-accent-foreground: oklch(0.89 0.0253 152.8); /* #CFE0D3 — 6.8:1 on selected */
+  --sidebar-border: oklch(0.953 0.0086 84.6 / 10%);
+  --sidebar-ring: oklch(0.757 0.0409 153.3);
   --chip-match-title-bg: oklch(0.27 0.04 265 / 0.5);
   --chip-match-title-fg: oklch(0.78 0.10 265);
   --chip-match-title-border: oklch(0.4 0.06 265);
@@ -404,8 +409,12 @@
   --chip-match-identifier-fg: var(--muted-foreground);
   --chip-match-identifier-border: var(--border);
   /* Dark-mode AA overrides for the status-icon hues that need a mode-specific
-     value (PAP-238). in_progress / blocked stay identical (same blue / red both
-     modes) and in_queue tracks in_progress, so they need no override. */
+     value (PAP-238). in_queue tracks in_progress. Warm Workspace (2026-09-13):
+     in_progress / blocked now need dark overrides too — the shared blue/red
+     fell below the 3:1 glyph floor on the lightened warm dark surfaces. */
+  --status-task-icon-in_progress: oklch(0.66 0.15 255); /* #4c94ec — 4.2–5.2:1 on dark surfaces */
+  --status-task-icon-in_queue: var(--status-task-icon-in_progress);
+  --status-task-icon-blocked: oklch(0.68 0.17 25); /* #ef6661 — 4.2–5.2:1 on dark surfaces */
   --status-task-icon-backlog: #9a958a;
   --status-task-icon-todo: #fbbf24;
   --status-task-icon-in_review: #9474f0;  /* deeper than violet-400, reads purple */
@@ -619,16 +628,16 @@
 }
 
 .dark *::-webkit-scrollbar-track {
-  background: oklch(0.205 0 0);
+  background: var(--background);
 }
 
 .dark *::-webkit-scrollbar-thumb {
-  background: oklch(0.4 0 0);
+  background: var(--scrollbar-thumb);
   border-radius: 4px;
 }
 
 .dark *::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.5 0 0);
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* Auto-hide scrollbar: thin, stable gutter with the thumb visible only on hover */

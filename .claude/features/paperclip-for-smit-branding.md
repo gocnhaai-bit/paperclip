@@ -18,7 +18,7 @@ Verification completed:
 
 - Display name: `Paperclip for SMIT`.
 - Keep the Paperclip mark geometry; recolor it through the SMIT brand token.
-- Use SMIT green only for primary actions, keyboard focus, active selection and the brand mark.
+- Use the brand green (Warm Workspace sage since 2026-09-13, see Visual tokens) only for primary actions, keyboard focus, active selection and the brand mark.
 - Keep status colors semantically independent from brand green.
 - Preserve core layout, fonts, routes, navigation structure, auth, permissions and behavior.
 - Keep KPI Dashboard navigation plugin-owned; do not add a core route.
@@ -34,7 +34,9 @@ Verification completed:
 
 ## Visual tokens
 
-Light: primary/ring/brand mark use SMIT green; active sidebar uses a pale green surface and dark green foreground. Dark: use a lighter green foreground with a deep green selected surface. Exact implementation values use OKLCH and must pass contrast checks.
+**2026-09-13 update (Warm Workspace redesign, user-approved):** the brand green values below were retuned from the saturated SMIT green to the muted Warm Workspace sage — same hue family (~150), lower chroma. All other branding contracts above (display name, mark geometry, status independence, layout/routes) are unchanged.
+
+Light: canvas warm ivory `#FAF8F4`, surface white, sidebar warm cream `#F5F2EB`, text navy `#172334`, secondary text `#586170`; primary/ring/brand mark use sage `#506F5B` (`oklch(0.511 0.048 156)`); active sidebar uses sage selected surface `#E4EBDD` with dark sage foreground `#2E4A38`. Dark: warm charcoal `#23211D`, lifted surfaces `#2B2924`, sidebar `#272520`; primary is light sage `#9DB8A4` with navy foreground; selected surface deep sage `#3A4A3F` with `#CFE0D3` foreground. All values live as OKLCH in `ui/src/index.css`; every pair changed in this run was contrast-verified >= 4.5:1 (text) in both modes on 2026-09-13, and the dependent dark pairs (destructive, in_progress/in_queue/blocked status glyphs) were lightness-retuned the same day to keep AA on the lightened dark surfaces (hues unchanged, still sage-independent).
 
 ## Verification
 
