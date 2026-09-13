@@ -90,7 +90,7 @@
   --accent: oklch(0.95 0.0099 87.5);
   --accent-foreground: oklch(0.254 0.0366 257.1);
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0); /* fixed 2026-09-13: was identical to --destructive (red-on-red, 1:1) — now 4.59:1, matches dark mode and Button's text-white convention */
   --border: oklch(0.893 0.0112 123.5); /* #DADDD5 warm hairline */
   --input: oklch(0.893 0.0112 123.5);
   --ring: oklch(0.511 0.048 156);
