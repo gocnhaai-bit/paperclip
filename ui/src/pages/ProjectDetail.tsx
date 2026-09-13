@@ -29,7 +29,7 @@ import { MembershipAction } from "../components/MembershipAction";
 import { StarToggle } from "../components/StarToggle";
 import { buildProjectWorkspaceSummaries } from "../lib/project-workspaces-tab";
 import { collectLiveIssueIds } from "../lib/liveIssueIds";
-import { projectRouteRef } from "../lib/utils";
+import { projectRouteRef, formatDate } from "../lib/utils";
 import { PROJECT_ICONS } from "../lib/project-icons";
 import { usePublishSharedQueryData, useSharedPollingQuery } from "../hooks/useSharedPolling";
 import { Button } from "@/components/ui/button";
@@ -788,6 +788,10 @@ export function ProjectDetail() {
         </div>
       </div>
 
+      <section aria-label="Project overview" className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="min-w-0 space-y-4 lg:col-span-2">
+          <p className="whitespace-pre-wrap text-sm text-muted-foreground">{project.description || "Describe the outcome this project is working toward in Configuration."}</p>
+          {project.goals?.length > 0 && <div className="space-y-2"><h3 className="text-sm font-medium">Goals</h3><ul className="space-y-1 text-sm text-muted-foreground">{project.goals.map((goal) => <li key={goal.id}>{goal.title}</li>)}</ul></div>}
       <SummarySlotCard
         companyId={resolvedCompanyId}
         scopeKind="project"
@@ -795,6 +799,17 @@ export function ProjectDetail() {
         title="Project summary"
         description="Summarizer keeps the latest project status, next step, and operator-needed items here."
       />
+
+        </div>
+        <aside className="self-start rounded-xl bg-muted/40 p-6">
+          <h3 className="mb-4 text-sm font-medium">Project details</h3>
+          <dl className="space-y-4 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2"><dt className="text-muted-foreground">Status</dt><dd><StatusBadge status={project.status} /></dd></div>
+            <div className="flex flex-wrap items-center justify-between gap-2"><dt className="text-muted-foreground">Target date</dt><dd>{project.targetDate ? formatDate(project.targetDate) : "Not set"}</dd></div>
+          </dl>
+          <Button variant="ghost" size="sm" className="mt-4" onClick={() => handleTabChange("configuration")}>Edit project details</Button>
+        </aside>
+      </section>
 
       <PluginSlotOutlet
         slotTypes={["toolbarButton", "contextMenuItem"]}

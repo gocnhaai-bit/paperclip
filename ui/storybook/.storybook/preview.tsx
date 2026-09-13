@@ -4,6 +4,7 @@ import { MINIMAL_VIEWPORTS } from "storybook/viewport";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   CONNECTABLE_APP_DEFINITIONS,
+  instanceSettingsSchema,
   type WorkTimelineResult,
 } from "@paperclipai/shared";
 import { MemoryRouter } from "@/lib/router";
@@ -155,7 +156,14 @@ function installStorybookApiFixtures() {
     }
 
     if (url.pathname === "/api/instance/settings") {
-      return Response.json({});
+      return Response.json(instanceSettingsSchema.parse({
+        id: "00000000-0000-4000-8000-000000000001",
+        defaultEnvironmentId: null,
+        general: {},
+        experimental: {},
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      }));
     }
 
     // The connect step's provider sign-in is gated on a *sandbox* environment

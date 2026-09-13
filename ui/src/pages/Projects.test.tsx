@@ -230,9 +230,20 @@ describe("Projects", () => {
     expect(content.indexOf("Alpha")).toBeLessThan(content.indexOf("Other Projects"));
   });
 
+  it("shows missing task counts as unavailable in cards", async () => {
+    mockProjectsApi.list.mockResolvedValue([makeProject({ id: "project-unknown", name: "Unknown count", taskCount: undefined })]);
+    await renderProjects();
+    const card = container.querySelector('[data-slot="card"]');
+    expect(card?.textContent).toContain("Unavailable");
+    expect(card?.textContent).toContain("Open project");
+    expect(card?.querySelector('button[aria-label^="Star"]')).not.toBeNull();
+  });
+
   it("reserves description line height for projects without descriptions", async () => {
     await renderProjects();
 
+    await act(async () => { Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent === "List")?.click(); });
+    await flushReact();
     const bravoLink = Array.from(container.querySelectorAll<HTMLAnchorElement>("a")).find((link) =>
       link.textContent?.includes("Bravo"),
     );

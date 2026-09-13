@@ -25,7 +25,10 @@ import { relativeTime, cn, agentRouteRef, agentUrl } from "../lib/utils";
 import { PageTabBar } from "../components/PageTabBar";
 import { Tabs } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Bot, Plus, List, Network } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { deriveInitials } from "../components/Identity";
+import { AlertTriangle, Bot, Plus, List, Network, LayoutGrid } from "lucide-react";
 import { AGENT_ROLE_LABELS, type Agent, type Environment, type EnvironmentCapabilities } from "@paperclipai/shared";
 import {
   isStarred,
@@ -189,9 +192,9 @@ function filterOrgTree(nodes: OrgNode[], tab: FilterTab, builtInAgentIds: Set<st
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export type AgentsView = "list" | "org";
+export type AgentsView = "cards" | "list" | "org";
 
-export function Agents({ initialView = "list" }: { initialView?: AgentsView } = {}) {
+export function Agents({ initialView = "cards" }: { initialView?: AgentsView } = {}) {
   const { selectedCompanyId } = useCompany();
   const { openNewAgent } = useDialogActions();
   const { setBreadcrumbs } = useBreadcrumbs();
@@ -381,6 +384,74 @@ export function Agents({ initialView = "list" }: { initialView?: AgentsView } = 
         )}
       </>
     ) : null;
+    const actions = (
+<div className="flex flex-wrap items-center gap-3">
+            <div className={effectiveView === "cards" ? "flex flex-wrap items-center gap-3" : "hidden sm:flex items-center gap-3"}>
+              {liveRunByAgent.has(agent.id) && (
+                <LiveRunIndicator
+                  agentRef={agentRouteRef(agent)}
+                  runId={liveRunByAgent.get(agent.id)!.runId}
+                  liveCount={liveRunByAgent.get(agent.id)!.liveCount}
+                />
+              )}
+              <span className="w-20 flex justify-end">
+                <AgentStatusBadge status={agent.status} />
+              </span>
+              <StarToggle
+                size={effectiveView === "cards" ? "button" : "row"}
+                starred={agentStarred}
+                pending={agentStarPending}
+                resourceName={agent.name}
+                onToggle={(next) => membershipMutation.mutate({
+                  resourceType: "agent",
+                  resourceId: agent.id,
+                  resourceName: agent.name,
+                  starred: next,
+                })}
+              />
+            </div>
+            <MembershipAction
+              compact={effectiveView === "cards"}
+              state={resourceMembershipState(membershipsQuery.data, "agent", agent.id)}
+              pending={agentJoinLeavePending}
+              pendingState={agentJoinLeavePending ? membershipMutation.variables?.state ?? null : null}
+              resourceName={agent.name}
+              onJoin={() => membershipMutation.mutate({
+                resourceType: "agent",
+                resourceId: agent.id,
+                resourceName: agent.name,
+                state: "joined",
+              })}
+              onLeave={() => membershipMutation.mutate({
+                resourceType: "agent",
+                resourceId: agent.id,
+                resourceName: agent.name,
+                state: "left",
+              })}
+            />
+          </div>
+    );
+    if (effectiveView === "cards") {
+      return (
+        <Card key={agent.id} className="min-w-0 gap-4 rounded-xl p-6 shadow-sm">
+          <Link to={agentUrl(agent)} className="flex min-w-0 items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Avatar size="lg"><AvatarFallback>{deriveInitials(agent.name)}</AvatarFallback></Avatar>
+            <div className="min-w-0 flex-1">
+              <h3 className="truncate text-base font-semibold">{agent.name}</h3>
+              <p className="truncate text-sm text-muted-foreground">{agent.title || roleLabels[agent.role] || agent.role}</p>
+            </div>
+            {hasInvalidOrgChain && <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" aria-label="Invalid reporting chain" />}
+          </Link>
+          <p className="line-clamp-3 min-h-16 text-sm text-muted-foreground">{agent.capabilities || "Capabilities have not been described yet."}</p>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span className="max-w-full truncate font-mono" title={getConfiguredModel(agent) ?? undefined}>{getConfiguredModel(agent) ?? "Model not specified"}</span><span>{getAdapterLabel(agent.adapterType)}</span>
+            {showEnvironmentColumn && <span title={resolveRenderedEnvironment(agent.id).title}>· {resolveRenderedEnvironment(agent.id).label} · {resolveRenderedEnvironment(agent.id).detail}</span>}
+            {builtInCluster}
+          </div>
+          <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">{actions}</div>
+        </Card>
+      );
+    }
     return (
       <EntityRow
         key={agent.id}
@@ -422,52 +493,7 @@ export function Agents({ initialView = "list" }: { initialView?: AgentsView } = 
           </div>
         }
         metaSpacerClassName="hidden @5xl:block"
-        trailing={
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-3">
-              {liveRunByAgent.has(agent.id) && (
-                <LiveRunIndicator
-                  agentRef={agentRouteRef(agent)}
-                  runId={liveRunByAgent.get(agent.id)!.runId}
-                  liveCount={liveRunByAgent.get(agent.id)!.liveCount}
-                />
-              )}
-              <span className="w-20 flex justify-end">
-                <AgentStatusBadge status={agent.status} />
-              </span>
-              <StarToggle
-                size="row"
-                starred={agentStarred}
-                pending={agentStarPending}
-                resourceName={agent.name}
-                onToggle={(next) => membershipMutation.mutate({
-                  resourceType: "agent",
-                  resourceId: agent.id,
-                  resourceName: agent.name,
-                  starred: next,
-                })}
-              />
-            </div>
-            <MembershipAction
-              state={resourceMembershipState(membershipsQuery.data, "agent", agent.id)}
-              pending={agentJoinLeavePending}
-              pendingState={agentJoinLeavePending ? membershipMutation.variables?.state ?? null : null}
-              resourceName={agent.name}
-              onJoin={() => membershipMutation.mutate({
-                resourceType: "agent",
-                resourceId: agent.id,
-                resourceName: agent.name,
-                state: "joined",
-              })}
-              onLeave={() => membershipMutation.mutate({
-                resourceType: "agent",
-                resourceId: agent.id,
-                resourceName: agent.name,
-                state: "left",
-              })}
-            />
-          </div>
-        }
+        trailing={actions}
       />
     );
   };
@@ -479,6 +505,17 @@ export function Agents({ initialView = "list" }: { initialView?: AgentsView } = 
         ? "flex h-full min-h-0 flex-col gap-4"
         : "space-y-4",
     )}>
+      <header className="flex flex-col gap-4 border-b border-border pb-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0 space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">TEAM DIRECTORY</p>
+          <h2 className="text-2xl font-semibold tracking-tight">Agents</h2>
+          <p className="max-w-2xl text-sm text-muted-foreground">See ownership, availability, and current run state before changing an agent.</p>
+        </div>
+        <Button size="sm" onClick={openNewAgent}>
+          <Plus className="mr-1.5 h-3.5 w-3.5" />
+          New Agent
+        </Button>
+      </header>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Tabs value={tab} onValueChange={(v) => navigate(`/agents/${v}`)}>
           <PageTabBar
@@ -489,6 +526,7 @@ export function Agents({ initialView = "list" }: { initialView?: AgentsView } = 
         </Tabs>
         <div className="flex items-center gap-2">
           {!forceListView ? <div className="flex items-center overflow-hidden rounded-md border border-border" role="group" aria-label="Agent view">
+              <Button type="button" size="icon-sm" variant={effectiveView === "cards" ? "secondary" : "ghost"} className="rounded-none" onClick={() => setView("cards")} title="Card view" aria-label="Card view" aria-pressed={effectiveView === "cards"}><LayoutGrid className="h-3.5 w-3.5" /></Button>
               <Button
                 type="button"
                 size="icon-sm"
@@ -514,10 +552,6 @@ export function Agents({ initialView = "list" }: { initialView?: AgentsView } = 
                 <Network className="h-3.5 w-3.5" />
               </Button>
           </div> : null}
-          <Button size="sm" variant="outline" onClick={openNewAgent}>
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
-            New Agent
-          </Button>
         </div>
       </div>
 
@@ -536,6 +570,9 @@ export function Agents({ initialView = "list" }: { initialView?: AgentsView } = 
         />
       )}
 
+      {effectiveView === "cards" && filtered.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 @3xl:grid-cols-2 @6xl:grid-cols-3">{filtered.map(renderAgentRow)}</div>
+      )}
       {/* List view */}
       {effectiveView === "list" && filtered.length > 0 && (
         <div>
@@ -543,7 +580,7 @@ export function Agents({ initialView = "list" }: { initialView?: AgentsView } = 
         </div>
       )}
 
-      {effectiveView === "list" && agents && agents.length > 0 && filtered.length === 0 && (
+      {effectiveView !== "org" && agents && agents.length > 0 && filtered.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-8">
           No agents match the selected status.
         </p>

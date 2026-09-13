@@ -1510,9 +1510,9 @@ export function AgentDetail() {
 
 function SummaryRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-muted-foreground text-xs">{label}</span>
-      <div className="flex items-center gap-1">{children}</div>
+    <div className="flex min-w-0 items-start justify-between gap-3">
+      <span className="shrink-0 text-muted-foreground text-xs">{label}</span>
+      <div className="flex min-w-0 items-center justify-end gap-1 text-right wrap-anywhere">{children}</div>
     </div>
   );
 }
@@ -1729,12 +1729,60 @@ export function AgentOverview({
   const lastRun = runs[0] ?? null;
 
   return (
-    <div className="space-y-6">
-      <LatestRunCard runs={runs} agentId={agentRouteId} issuesById={issuesById} />
+    <div className="grid min-w-0 gap-6 lg:grid-cols-3">
+      <div className="min-w-0 space-y-6 lg:col-span-2">
+        <LatestRunCard runs={runs} agentId={agentRouteId} issuesById={issuesById} />
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <section className="rounded-lg border border-border p-4" aria-labelledby="agent-identity-heading">
-          <div className="mb-4 flex items-center justify-between gap-3">
+        <section className="space-y-3" aria-labelledby="agent-recent-tasks-heading">
+          <div className="flex items-center justify-between">
+            <h3 id="agent-recent-tasks-heading" className="text-sm font-medium">Recent Tasks</h3>
+            <Link
+              to={`/issues?participantAgentId=${agent.id}`}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              See All &rarr;
+            </Link>
+          </div>
+          {assignedIssues.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No recent tasks.</p>
+          ) : (
+            <div className="overflow-hidden rounded-lg border border-border">
+              {assignedIssues.slice(0, 6).map((issue) => (
+                <IssueRow
+                  key={issue.id}
+                  issue={issue}
+                  presentation="task"
+                  metadata={<span className="text-xs text-muted-foreground">{relativeTime(issue.updatedAt)}</span>}
+                  showDivider
+                />
+              ))}
+              {assignedIssues.length > 6 && (
+                <div className="border-t border-border px-3 py-2 text-center text-xs text-muted-foreground">
+                  +{assignedIssues.length - 6} more tasks
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
+        <section className="space-y-3" aria-labelledby="agent-audit-links-heading">
+          <h3 id="agent-audit-links-heading" className="text-sm font-medium">Audit</h3>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {(["activity", "runs", "costs", "budgets"] as const).map((section) => (
+              <Link
+                key={section}
+                to={agentScopedAuditHref(agent.id, section)}
+                className="rounded-lg border border-border px-3 py-2 text-sm font-medium capitalize hover:bg-accent"
+              >
+                {section}
+              </Link>
+            ))}
+          </div>
+        </section>
+      </div>
+      <aside aria-label="Agent information" className="min-w-0 space-y-6">
+        <section className="space-y-3" aria-labelledby="agent-identity-heading">
+          <div className="flex items-center justify-between gap-3">
             <h3 id="agent-identity-heading" className="text-sm font-medium">Identity</h3>
             <StatusBadge status={agent.status} />
           </div>
@@ -1752,8 +1800,8 @@ export function AgentOverview({
           </div>
         </section>
 
-        <section className="rounded-lg border border-border p-4" aria-labelledby="agent-runtime-heading">
-          <div className="mb-4 flex items-center justify-between gap-3">
+        <section className="space-y-3" aria-labelledby="agent-runtime-heading">
+          <div className="flex items-center justify-between gap-3">
             <h3 id="agent-runtime-heading" className="text-sm font-medium">Harness / Runtime</h3>
             <Link className="text-xs text-muted-foreground hover:text-foreground" to={agentDetailHref(agentRouteId, "runtime")}>Configure</Link>
           </div>
@@ -1767,8 +1815,8 @@ export function AgentOverview({
           </div>
         </section>
 
-        <section className="rounded-lg border border-border p-4" aria-labelledby="agent-capabilities-heading">
-          <h3 id="agent-capabilities-heading" className="mb-3 text-sm font-medium">Capabilities</h3>
+        <section className="space-y-3" aria-labelledby="agent-capabilities-heading">
+          <h3 id="agent-capabilities-heading" className="text-sm font-medium">Capabilities</h3>
           {agent.capabilities?.trim() ? (
             <MarkdownBody className="text-sm [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">{agent.capabilities}</MarkdownBody>
           ) : (
@@ -1776,68 +1824,21 @@ export function AgentOverview({
           )}
         </section>
 
-        <section className="rounded-lg border border-border p-4" aria-labelledby="agent-skills-heading">
-          <div className="mb-3 flex items-center justify-between gap-3">
+        <section className="space-y-3" aria-labelledby="agent-skills-heading">
+          <div className="flex items-center justify-between gap-3">
             <h3 id="agent-skills-heading" className="text-sm font-medium">Skills</h3>
             <Link className="text-xs text-muted-foreground hover:text-foreground" to={agentDetailHref(agentRouteId, "skills")}>Manage</Link>
           </div>
           {skillNames.length > 0 ? (
             <div className="flex flex-wrap gap-2">
-              {skillNames.slice(0, 8).map((skill) => <Badge key={skill} variant="secondary">{skill}</Badge>)}
+              {skillNames.slice(0, 8).map((skill) => <Badge key={skill} variant="secondary" className="max-w-full whitespace-normal wrap-anywhere">{skill}</Badge>)}
               {skillNames.length > 8 ? <Badge variant="outline">+{skillNames.length - 8} more</Badge> : null}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">No skills enabled.</p>
           )}
         </section>
-      </div>
-
-      <section className="space-y-3" aria-labelledby="agent-recent-tasks-heading">
-        <div className="flex items-center justify-between">
-          <h3 id="agent-recent-tasks-heading" className="text-sm font-medium">Recent Tasks</h3>
-          <Link
-            to={`/issues?participantAgentId=${agent.id}`}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            See All &rarr;
-          </Link>
-        </div>
-        {assignedIssues.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No recent tasks.</p>
-        ) : (
-          <div className="overflow-hidden rounded-lg border border-border">
-            {assignedIssues.slice(0, 6).map((issue) => (
-              <IssueRow
-                key={issue.id}
-                issue={issue}
-                presentation="task"
-                metadata={<span className="text-xs text-muted-foreground">{relativeTime(issue.updatedAt)}</span>}
-                showDivider
-              />
-            ))}
-            {assignedIssues.length > 6 && (
-              <div className="border-t border-border px-3 py-2 text-center text-xs text-muted-foreground">
-                +{assignedIssues.length - 6} more tasks
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-
-      <section className="space-y-3" aria-labelledby="agent-audit-links-heading">
-        <h3 id="agent-audit-links-heading" className="text-sm font-medium">Audit</h3>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {(["activity", "runs", "costs", "budgets"] as const).map((section) => (
-            <Link
-              key={section}
-              to={agentScopedAuditHref(agent.id, section)}
-              className="rounded-lg border border-border px-3 py-2 text-sm font-medium capitalize hover:bg-accent"
-            >
-              {section}
-            </Link>
-          ))}
-        </div>
-      </section>
+      </aside>
     </div>
   );
 }

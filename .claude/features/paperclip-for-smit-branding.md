@@ -20,7 +20,7 @@ Verification completed:
 - Keep the Paperclip mark geometry; recolor it through the SMIT brand token.
 - Use the brand green (Warm Workspace sage since 2026-09-13, see Visual tokens) only for primary actions, keyboard focus, active selection and the brand mark.
 - Keep status colors semantically independent from brand green.
-- Preserve core layout, fonts, routes, navigation structure, auth, permissions and behavior.
+- Preserve fonts, routes, navigation structure, auth, permissions and behavior. The user-approved Warm Workspace work may restructure page layouts under DESIGN.md.
 - Keep KPI Dashboard navigation plugin-owned; do not add a core route.
 
 ## Ownership
@@ -45,3 +45,13 @@ Light: canvas warm ivory `#FAF8F4`, surface white, sidebar warm cream `#F5F2EB`,
 - UI typecheck/build and relevant tests.
 - Desktop/mobile, light/dark, keyboard focus and no-overflow checks.
 - Reverting the branding commit must restore stock Paperclip while the external KPI plugin remains installed.
+
+## Warm Workspace cards continuation — 2026-09-14
+
+The streamlined Agents route now defaults to cards and retains list/org views; Projects adds cards/list with source-backed metadata; Project detail separates overview and properties. Initials are a temporary neutral avatar fallback, not an approved A2 asset. All new visual classes use the existing token system. Storybook fixture previews and scoped UI verification are recorded in `plans/260913-2016-warm-workspace-p0-p1/PROGRESS.md`; they do not supersede the distinction between local checks and live deployment.
+
+Agent overview now places the latest run, recent tasks and scoped audit links before the identity/runtime/capabilities/skills information in DOM order. At desktop widths the information is a secondary column; on smaller screens it follows the work. Local summary rows and skill badges allow long unbroken values to wrap within that column; model/session values retain truncation. This reuses the existing sections and handlers without changing queries, permissions or execution behavior. It does not replace the current fallback artwork or complete the remaining detail-page and release acceptance work.
+
+The existing `chat-comments.stories.tsx` timeline/chat matrix explicitly uses one shrinkable grid column below its desktop split breakpoint. This prevents the preview wrapper from forcing a wide chat/composer at mobile sizes; it is a Storybook verification fix, not a change to the production task-chat shell.
+
+`Pages/Warm Workspace/Project Detail Page` mounts the actual project route with existing sample project/task data and the required plugin-launcher provider. It supports local layout and tab-navigation checks, not live project actions or proof of server-side project filtering. The project overview from the previous continuation is retained rather than reimplemented.

@@ -21,14 +21,14 @@ vi.mock("../components/MarkdownBody", () => ({
 }));
 
 describe("AgentOverview", () => {
-  it("prioritizes identity, capability, runtime, skills, tasks, and scoped Audit entry points", () => {
+  it("prioritizes recent work while retaining agent information and scoped Audit links", () => {
     const agent = {
       id: "agent-1",
       companyId: "company-1",
       name: "Codex Coder",
       urlKey: "codexcoder",
       role: "engineer",
-      title: "Product engineer",
+      title: "LongUnbrokenAgentTitle".repeat(8),
       status: "active",
       reportsTo: null,
       capabilities: "Builds and verifies product changes.",
@@ -51,6 +51,7 @@ describe("AgentOverview", () => {
       sessionDisplayId: "codex-session-42",
     } as unknown as AgentRuntimeState;
 
+    const longSkillName = "LongUnbrokenSkillName".repeat(7);
     const markup = renderToStaticMarkup(
       <QueryClientProvider client={new QueryClient()}>
         <AgentOverview
@@ -59,12 +60,22 @@ describe("AgentOverview", () => {
           assignedIssues={[issue]}
           runtimeState={runtime}
           directReportCount={2}
-          skillNames={["Design Guide", "Check PR"]}
+          skillNames={["Design Guide", "Check PR", longSkillName]}
           agentRouteId="codexcoder"
         />
       </QueryClientProvider>,
     );
 
+    const document = new DOMParser().parseFromString(markup, "text/html");
+    const tasks = document.querySelector('[aria-labelledby="agent-recent-tasks-heading"]')!;
+    const information = document.querySelector('aside[aria-label="Agent information"]')!;
+    expect(tasks.compareDocumentPosition(information) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(information.contains(tasks)).toBe(false);
+    expect(information.textContent).toContain("codex-session-42");
+    expect(information.textContent).toContain(agent.title);
+    expect(information.textContent).toContain(longSkillName);
+    expect(information.querySelector('a[href="/agents/codexcoder/runtime"]')).not.toBeNull();
+    expect(information.querySelector('a[href="/agents/codexcoder/skills"]')).not.toBeNull();
     expect(markup).toContain("Identity");
     expect(markup).toContain("Capabilities");
     expect(markup).toContain("Harness / Runtime");

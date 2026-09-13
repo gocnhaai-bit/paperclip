@@ -6,6 +6,7 @@ import { useCompany } from "../context/CompanyContext";
 import { useDialogActions } from "../context/DialogContext";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { queryKeys } from "../lib/queryKeys";
+import { Link } from "@/lib/router";
 import { EntityRow } from "../components/EntityRow";
 import { ProjectTile } from "../components/ProjectTile";
 import { StatusBadge } from "../components/StatusBadge";
@@ -22,7 +23,7 @@ import {
 } from "../hooks/useResourceMemberships";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ArrowUpDown, Check, Hexagon, Plus } from "lucide-react";
+import { ArrowUpDown, Check, Hexagon, Plus, LayoutGrid, List } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 type ProjectSortField = "name" | "updated" | "created" | "targetDate";
@@ -80,6 +81,7 @@ export function Projects() {
   const { selectedCompanyId } = useCompany();
   const { openNewProject } = useDialogActions();
   const { setBreadcrumbs } = useBreadcrumbs();
+  const [view, setView] = useState<"cards" | "list">("cards");
   const [sortField, setSortField] = useState<ProjectSortField>("name");
   const [sortDir, setSortDir] = useState<ProjectSortDir>("asc");
 
@@ -127,8 +129,23 @@ export function Projects() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <header className="flex flex-col gap-4 border-b border-border pb-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0 space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">PORTFOLIO</p>
+          <h2 className="text-2xl font-semibold tracking-tight">Projects</h2>
+          <p className="max-w-2xl text-sm text-muted-foreground">Group work by outcome and review the task load, budget, and ownership in one place.</p>
+        </div>
+        <Button size="sm" onClick={openNewProject}>
+          <Plus className="mr-1 h-4 w-4" />
+          Add Project
+        </Button>
+      </header>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-1" role="group" aria-label="Project view">
+          <Button size="sm" variant={view === "cards" ? "secondary" : "ghost"} aria-pressed={view === "cards"} onClick={() => setView("cards")}><LayoutGrid className="mr-2 h-4 w-4" />Cards</Button>
+          <Button size="sm" variant={view === "list" ? "secondary" : "ghost"} aria-pressed={view === "list"} onClick={() => setView("list")}><List className="mr-2 h-4 w-4" />List</Button>
+        </div>
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm" className="w-fit text-xs" title="Sort">
@@ -168,10 +185,6 @@ export function Projects() {
             </div>
           </PopoverContent>
         </Popover>
-        <Button size="sm" variant="outline" onClick={openNewProject}>
-          <Plus className="h-4 w-4 mr-1" />
-          Add Project
-        </Button>
       </div>
 
       {error && <p className="text-sm text-destructive">{error.message}</p>}
@@ -201,7 +214,7 @@ export function Projects() {
                     {sectionProjects.length} project{sectionProjects.length === 1 ? "" : "s"}
                   </span>
                 </div>
-                <Card className="block py-0 overflow-hidden divide-y divide-border">
+                <div className={view === "cards" ? "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" : "overflow-hidden rounded-lg border border-border bg-card"}>
                   {sectionProjects.map((project) => {
                     const state = resourceMembershipState(membershipsQuery.data, "project", project.id);
                     const pending = membershipMutation.isPending &&
@@ -210,35 +223,10 @@ export function Projects() {
                     const starPending = pending && membershipMutation.variables?.starred !== undefined;
                     const joinLeavePending = pending && membershipMutation.variables?.starred === undefined;
                     const starred = isStarred(membershipsQuery.data, "project", project.id);
-                    return (
-                      <EntityRow
-                        key={project.id}
-                        leading={<ProjectTile color={project.color ?? null} icon={project.icon ?? null} size="sm" />}
-                        title={project.name}
-                        subtitle={project.description ?? undefined}
-                        reserveSubtitleSpace
-                        to={projectUrl(project)}
-                        className={state === "left" ? "group text-foreground/55" : "group"}
-                        trailing={
-                          <div className="flex items-center gap-3">
-                            <span
-                              className="hidden text-xs text-muted-foreground tabular-nums sm:inline"
-                              title={`${formatNumber(project.taskCount ?? 0)} task${(project.taskCount ?? 0) === 1 ? "" : "s"}`}
-                            >
-                              {formatNumber(project.taskCount ?? 0)} task{(project.taskCount ?? 0) === 1 ? "" : "s"}
-                            </span>
-                            {project.budget && (
-                              <span className="hidden text-xs text-muted-foreground tabular-nums sm:inline">
-                                {formatProjectBudget(project.budget)}
-                              </span>
-                            )}
-                            {project.targetDate && (
-                              <span className="hidden text-xs text-muted-foreground md:inline">
-                                {formatDate(project.targetDate)}
-                              </span>
-                            )}
-                            <StatusBadge status={project.status} />
+                    const actions = (
+                      <div className="flex flex-wrap items-center gap-3">
                             <MembershipAction
+                              compact={view === "cards"}
                               state={state}
                               pending={joinLeavePending}
                               pendingState={joinLeavePending ? membershipMutation.variables?.state : null}
@@ -256,8 +244,8 @@ export function Projects() {
                                 state: "left",
                               })}
                             />
-                            <StarToggle
-                              size="row"
+                            <span className={view === "list" ? "hidden sm:inline-flex" : "inline-flex"}><StarToggle
+                              size={view === "cards" ? "button" : "row"}
                               starred={starred}
                               pending={starPending}
                               resourceName={project.name}
@@ -267,13 +255,43 @@ export function Projects() {
                                 resourceName: project.name,
                                 starred: next,
                               })}
-                            />
+                            /></span>
                           </div>
-                        }
+                    );
+                    if (view === "cards") return (
+                      <Card key={project.id} className="min-w-0 gap-4 rounded-xl p-6 shadow-sm">
+                        <div className="flex items-start justify-between gap-3">
+                          <Link to={projectUrl(project)} className="flex min-w-0 items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            <ProjectTile color={project.color} icon={project.icon} size="lg" />
+                            <h3 className="truncate text-base font-semibold">{project.name}</h3>
+                          </Link>
+                          <StatusBadge status={project.status} />
+                        </div>
+                        <p className="line-clamp-3 min-h-16 text-sm text-muted-foreground">{project.description || "No project description yet."}</p>
+                        {project.goals?.length > 0 && <div className="space-y-1"><p className="text-xs font-medium text-muted-foreground">Goals</p><p className="line-clamp-2 text-sm">{project.goals.map((goal) => goal.title).join(" · ")}</p></div>}
+                        <dl className="mt-auto grid grid-cols-2 gap-3 text-sm">
+                          <div><dt className="text-xs text-muted-foreground">Tasks</dt><dd className="font-mono">{project.taskCount === undefined ? "Unavailable" : formatNumber(project.taskCount)}</dd></div>
+                          <div><dt className="text-xs text-muted-foreground">Target date</dt><dd>{project.targetDate ? formatDate(project.targetDate) : "Not set"}</dd></div>
+                          <div className="col-span-2"><dt className="text-xs text-muted-foreground">Budget</dt><dd className="font-mono">{project.budget === undefined ? "Unavailable" : project.budget ? formatProjectBudget(project.budget) : "Not set"}</dd></div>
+                        </dl>
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4"><Link to={projectUrl(project)} className="text-sm font-medium underline-offset-4 hover:underline">Open project</Link>{actions}</div>
+                      </Card>
+                    );
+                    return (
+                      <EntityRow
+                        key={project.id}
+                        leading={<ProjectTile color={project.color ?? null} icon={project.icon ?? null} size="sm" />}
+                        title={project.name}
+                        subtitle={project.description ?? undefined}
+                        reserveSubtitleSpace
+                        titlePriority
+                        to={projectUrl(project)}
+                        className={state === "left" ? "group text-foreground/55" : "group"}
+                        trailing={<div className="flex flex-wrap items-center gap-3"><span className="hidden text-xs font-mono text-muted-foreground sm:inline">{project.taskCount === undefined ? "Task count unavailable" : `${formatNumber(project.taskCount)} tasks`}</span>{project.budget && <span className="hidden text-xs text-muted-foreground sm:inline">{formatProjectBudget(project.budget)}</span>}{project.targetDate && <span className="hidden text-xs text-muted-foreground md:inline">{formatDate(project.targetDate)}</span>}<StatusBadge status={project.status} />{actions}</div>}
                       />
                     );
                   })}
-                </Card>
+                </div>
               </section>
             );
           })}

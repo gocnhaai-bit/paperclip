@@ -321,7 +321,24 @@ export function Dashboard() {
     pausedBanner?.kind === "imported" ? pausedBanner.pausedImportedAgentIds.length : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      <header className="flex flex-col gap-4 border-b border-border pb-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0 space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">OPERATIONS OVERVIEW</p>
+          <h2 className="text-2xl font-semibold tracking-tight">What needs attention</h2>
+          <p className="max-w-2xl text-sm text-muted-foreground">
+            Review active work, budget controls, and recent changes across this organization.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="outline" asChild>
+            <Link to="/issues">View tasks</Link>
+          </Button>
+          <Button size="sm" asChild>
+            <Link to="/agents">Manage agents</Link>
+          </Button>
+        </div>
+      </header>
       {error && <p className="text-sm text-destructive">{error.message}</p>}
 
       {pausedBanner?.kind === "imported" ? (
@@ -374,8 +391,6 @@ export function Dashboard() {
         />
       )}
 
-      <ActiveAgentsPanel companyId={selectedCompanyId!} />
-
       {data && (
         <>
           {data.budgets.activeIncidents > 0 ? (
@@ -393,7 +408,12 @@ export function Dashboard() {
             </InlineBanner>
           ) : null}
 
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-1 sm:gap-2">
+          <section className="space-y-3" aria-labelledby="dashboard-signals-heading">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 id="dashboard-signals-heading" className="text-sm font-semibold">Operating signals</h2>
+              <span className="text-xs text-muted-foreground">Live company summary</span>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               icon={Bot}
               value={data.agents.active + data.agents.running + data.agents.paused + data.agents.error}
@@ -445,11 +465,22 @@ export function Dashboard() {
                 </span>
               }
             />
-          </div>
+            </div>
+          </section>
 
           <SmokeLabDashboardCard companyId={selectedCompanyId!} />
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <section className="space-y-3" aria-labelledby="dashboard-work-heading">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 id="dashboard-work-heading" className="text-sm font-semibold">Work in motion</h2>
+              <Link to="/dashboard/live" className="text-xs text-primary hover:underline">Open live view</Link>
+            </div>
+            <ActiveAgentsPanel companyId={selectedCompanyId!} />
+          </section>
+
+          <section className="space-y-3" aria-labelledby="dashboard-trends-heading">
+            <h2 id="dashboard-trends-heading" className="text-sm font-semibold">Trends</h2>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <ChartCard title="Run Activity" subtitle="Last 14 days">
               <RunActivityChart activity={data.runActivity} />
             </ChartCard>
@@ -465,7 +496,8 @@ export function Dashboard() {
             <ChartCard title="Success Rate" subtitle="Last 14 days">
               <SuccessRateChart activity={data.runActivity} />
             </ChartCard>
-          </div>
+            </div>
+          </section>
 
           <PluginSlotOutlet
             slotTypes={["dashboardWidget"]}
@@ -475,13 +507,16 @@ export function Dashboard() {
             itemClassName="rounded-lg border bg-card p-4 shadow-sm"
           />
 
-          <div className="grid md:grid-cols-2 gap-4">
+          <section className="grid gap-6 border-t border-border pt-6 md:grid-cols-2">
             {/* Recent Activity */}
             {recentActivity.length > 0 && (
               <div className="min-w-0">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="text-sm font-semibold">
                   Recent Activity
-                </h3>
+                </h2>
+                <Link to="/activity" className="text-xs text-primary hover:underline">View activity</Link>
+                </div>
                 <Card className="block py-0 divide-y divide-border overflow-hidden">
                   {recentActivity.map((event) => (
                     <ActivityRow
@@ -500,9 +535,12 @@ export function Dashboard() {
 
             {/* Recent Tasks */}
             <div className="min-w-0">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold">
                 Recent Tasks
-              </h3>
+              </h2>
+              <Link to="/issues" className="text-xs text-primary hover:underline">View tasks</Link>
+              </div>
               {recentIssues.length === 0 ? (
                 <Card className="block p-4">
                   <p className="text-sm text-muted-foreground">No tasks yet.</p>
@@ -549,7 +587,7 @@ export function Dashboard() {
                 </Card>
               )}
             </div>
-          </div>
+          </section>
 
         </>
       )}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Issue } from "@paperclipai/shared";
 import {
+  preserveCompanyIssuePages,
   ISSUES_ROW_PRESENTATION,
   ISSUES_TOOLBAR_PRESENTATION,
   buildIssuesSearchUrl,
@@ -69,5 +70,17 @@ describe("issues page pagination helpers", () => {
       second,
       third,
     ]);
+  });
+});
+
+
+describe("company-scoped task placeholders", () => {
+  const pages = { pages: [[createIssue("private-a", "Company A task")]], pageParams: [0] };
+  it("clears the previous company's tasks during a company switch", () => {
+    expect(preserveCompanyIssuePages(pages, ["issues", "company-a"], "company-b")).toBeUndefined();
+    expect(preserveCompanyIssuePages(pages, ["issues", "company-a"], null)).toBeUndefined();
+  });
+  it("retains the current company's pages during filter changes", () => {
+    expect(preserveCompanyIssuePages(pages, ["issues", "company-a", "filter"], "company-a")).toBe(pages);
   });
 });

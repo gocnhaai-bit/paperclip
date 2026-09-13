@@ -392,13 +392,30 @@ describe("Agents", () => {
     }
   });
 
+  it("shows role and capabilities in cards and keeps list switching available", async () => {
+    mockAgentsApi.list.mockResolvedValue([makeAgent({ name: "Sofia", title: "Product designer", capabilities: "Design accessible product experiences", adapterConfig: { model: "gpt-5.4" } })]);
+    root = createRoot(container);
+    await act(async () => { root!.render(<QueryClientProvider client={queryClient}><ToastProvider><Agents initialView="cards" /></ToastProvider></QueryClientProvider>); });
+    await flushReact(); await flushReact();
+    const card = container.querySelector('[data-slot="card"]');
+    expect(card?.textContent).toContain("Product designer");
+    expect(card?.textContent).toContain("Design accessible product experiences");
+    expect(card?.textContent).toContain("gpt-5.4");
+    expect(card?.querySelector('a[href^="/agents/"]')).not.toBeNull();
+    expect(card?.querySelector('button[aria-label^="Star"]')).not.toBeNull();
+    await act(async () => { container.querySelector<HTMLButtonElement>('button[aria-label="List view"]')?.click(); });
+    await flushReact();
+    expect(container.querySelector('[data-slot="card"]')).toBeNull();
+    expect(findAgentRow(container, "Sofia")).not.toBeNull();
+  });
+
   it("shows the configured model beside the adapter on the all agents page", async () => {
     root = createRoot(container);
     await act(async () => {
       root!.render(
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
-            <Agents />
+            <Agents initialView="list" />
           </ToastProvider>
         </QueryClientProvider>,
       );
@@ -422,7 +439,7 @@ describe("Agents", () => {
       root!.render(
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
-            <Agents />
+            <Agents initialView="list" />
           </ToastProvider>
         </QueryClientProvider>,
       );
@@ -491,7 +508,7 @@ describe("Agents", () => {
       root!.render(
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
-            <Agents />
+            <Agents initialView="list" />
           </ToastProvider>
         </QueryClientProvider>,
       );
@@ -560,7 +577,7 @@ describe("Agents", () => {
       root!.render(
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
-            <Agents />
+            <Agents initialView="list" />
           </ToastProvider>
         </QueryClientProvider>,
       );
@@ -594,7 +611,7 @@ describe("Agents", () => {
       root!.render(
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
-            <Agents />
+            <Agents initialView="list" />
           </ToastProvider>
         </QueryClientProvider>,
       );
@@ -627,7 +644,7 @@ describe("Agents", () => {
       root!.render(
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
-            <Agents />
+            <Agents initialView="list" />
           </ToastProvider>
         </QueryClientProvider>,
       );
@@ -655,7 +672,7 @@ describe("Agents", () => {
       root!.render(
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
-            <Agents />
+            <Agents initialView="list" />
           </ToastProvider>
         </QueryClientProvider>,
       );
@@ -694,7 +711,7 @@ describe("Agents", () => {
       root!.render(
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
-            <Agents />
+            <Agents initialView="list" />
           </ToastProvider>
         </QueryClientProvider>,
       );
@@ -753,7 +770,7 @@ describe("Agents", () => {
       root!.render(
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
-            <Agents />
+            <Agents initialView="list" />
           </ToastProvider>
         </QueryClientProvider>,
       );
@@ -817,7 +834,7 @@ describe("Agents", () => {
       root!.render(
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
-            <Agents />
+            <Agents initialView="list" />
           </ToastProvider>
         </QueryClientProvider>,
       );
@@ -861,7 +878,7 @@ describe("Agents", () => {
       root!.render(
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
-            <Agents />
+            <Agents initialView="list" />
           </ToastProvider>
         </QueryClientProvider>,
       );
@@ -879,7 +896,7 @@ describe("Agents", () => {
       root!.render(
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
-            <Agents />
+            <Agents initialView="list" />
           </ToastProvider>
         </QueryClientProvider>,
       );
@@ -899,7 +916,7 @@ describe("Agents", () => {
       root!.render(
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
-            <Agents />
+            <Agents initialView="list" />
           </ToastProvider>
         </QueryClientProvider>,
       );
@@ -952,7 +969,7 @@ describe("Agents", () => {
       root!.render(
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
-            <Agents />
+            <Agents initialView="list" />
           </ToastProvider>
         </QueryClientProvider>,
       );
@@ -974,7 +991,7 @@ describe("Agents", () => {
       root!.render(
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
-            <Agents />
+            <Agents initialView="list" />
           </ToastProvider>
         </QueryClientProvider>,
       );
@@ -1011,7 +1028,7 @@ describe("Agents", () => {
       root!.render(
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
-            <Agents />
+            <Agents initialView="list" />
           </ToastProvider>
         </QueryClientProvider>,
       );
@@ -1063,7 +1080,7 @@ describe("Agents", () => {
       root!.render(
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
-            <Agents />
+            <Agents initialView="list" />
           </ToastProvider>
         </QueryClientProvider>,
       );
@@ -1087,7 +1104,7 @@ describe("Agents", () => {
       root!.render(
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
-            <Agents />
+            <Agents initialView="list" />
           </ToastProvider>
         </QueryClientProvider>,
       );

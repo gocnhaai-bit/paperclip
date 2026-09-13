@@ -65,6 +65,10 @@ export function buildIssuesSearchUrl(currentHref: string, search: string): strin
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
+export function preserveCompanyIssuePages<T>(previousData: T | undefined, previousQueryKey: readonly unknown[] | undefined, companyId: string | null): T | undefined {
+  return companyId && previousQueryKey?.[0] === "issues" && previousQueryKey[1] === companyId ? previousData : undefined;
+}
+
 export function Issues() {
   const { enabled: streamlinedUiEnabled } = useStreamlinedUiEnabled();
   const issuesPresentation = resolveIssuesPresentation(streamlinedUiEnabled);
@@ -174,7 +178,7 @@ export function Issues() {
     getNextPageParam: (lastPage, _allPages, lastPageParam) =>
       getNextIssuesPageOffset(lastPage.length, lastPageParam, issuePageSize),
     enabled: !!selectedCompanyId,
-    placeholderData: (previousData) => previousData,
+    placeholderData: (previousData, previousQuery) => preserveCompanyIssuePages(previousData, previousQuery?.queryKey, selectedCompanyId),
   });
 
   const issues = useMemo(() => mergeIssuePagesStable(issuePages?.pages ?? []) as Issue[], [issuePages]);
@@ -209,7 +213,13 @@ export function Issues() {
   }
 
   return (
-    <IssuesList
+    <div className="space-y-6">
+      <header className="space-y-1 border-b border-border pb-5">
+        <p className="text-xs font-medium text-muted-foreground">WORK QUEUE</p>
+        <h2 className="text-2xl font-semibold tracking-tight">Tasks</h2>
+        <p className="max-w-2xl text-sm text-muted-foreground">Triage work by status, owner, and project without losing the operational detail behind each task.</p>
+      </header>
+      <IssuesList
       issues={issues ?? []}
       isLoading={isLoading}
       isLoadingMoreIssues={isFetchingNextPage}
@@ -229,7 +239,8 @@ export function Issues() {
       hasMoreIssues={hasMoreServerIssues}
       onLoadMoreIssues={loadMoreServerIssues}
       onUpdateIssue={(id, data) => updateIssue.mutate({ id, data })}
-      searchFilters={participantAgentId || workspaceIdFilter ? { participantAgentId, workspaceId: workspaceIdFilter } : undefined}
-    />
+        searchFilters={participantAgentId || workspaceIdFilter ? { participantAgentId, workspaceId: workspaceIdFilter } : undefined}
+      />
+    </div>
   );
 }

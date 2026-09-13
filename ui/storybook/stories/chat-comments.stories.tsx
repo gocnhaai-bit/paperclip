@@ -759,7 +759,7 @@ function RunChatMatrix() {
 function IssueChatMatrix() {
   return (
     <Section eyebrow="IssueChatThread" title="Issue-specific chat with timeline events, linked runs, and live output">
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="rounded-lg border border-border bg-background/70 p-4">
           <IssueChatThread
             comments={issueChatComments}
