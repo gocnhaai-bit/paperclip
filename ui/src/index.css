@@ -2356,7 +2356,6 @@ span.paperclip-mention-chip[data-mention-kind="external-object"] {
   --app-logo-tile-6: #1a73e8;
   --app-logo-tile-7: #0f9d58;
   --app-logo-tile-8: #ea4335;
-  --gradient-extract-1: linear-gradient(180deg,rgba(255,80,80,0.12),rgba(255,255,255,0.02)); /* Dashboard.tsx budget-alert card gradient. */
   --gradient-extract-2: linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02)); /* Costs.tsx subtle white card gradient. */
   --gradient-extract-3: radial-gradient(circle at top left,rgba(244,114,182,0.08),transparent 35%),radial-gradient(circle at bottom right,rgba(56,189,248,0.1),transparent 32%); /* AccountingModelCard.tsx decorative overlay. */
   --gradient-extract-4: linear-gradient(180deg,rgba(255,70,70,0.10),rgba(255,255,255,0.02)); /* BudgetIncidentCard.tsx incident-card gradient. */
