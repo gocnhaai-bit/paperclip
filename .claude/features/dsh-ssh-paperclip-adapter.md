@@ -1,6 +1,12 @@
-# DSH SSH Paperclip adapter
+# DSH Paperclip adapters
 
-## Status
+## HTTP bridge exception
+
+Paperclip's built-in HTTP adapter may reach exactly `https://agent-baquan-hermes.tail9452c0.ts.net:8447/run` when MagicDNS resolves that hostname to a private Tailscale address. Matching occurs after URL parsing and requires HTTPS, the exact hostname, explicit port `8447`, path `/run`, no user information, query, or fragment. Other private addresses, Tailscale IP literals, sibling tailnet hostnames, ports, and paths remain subject to the default SSRF guard. Link-local addresses remain denied even if returned for the allowed hostname. HTTP adapter redirects are rejected rather than followed.
+
+This exception changes only Paperclip egress validation. DSH bridge creation, credentials, and agent adapter configuration remain operator-owned and are not part of this patch.
+
+## SSH adapter status
 
 External adapter package `0.2.0` is installed in the local Paperclip instance. The replacement `DSH Pilot` agent is created with heartbeat disabled after the original agent was terminated. Assignment dispatch through the dedicated SSH forced command to the pinned DSH runtime on the VPS is verified after the worker dependency relocation. Model/provider setup and successful task completion are intentionally deferred.
 
