@@ -1,7 +1,12 @@
+import type { IssueComment, IssueAttachment, IssueDocument, IssueWorkProduct } from "@paperclipai/shared";
 import { useEffect, useState } from "react";
 import { Routes, Route, useLocation, useNavigate } from "@/lib/router";
 import { useQueryClient } from "@tanstack/react-query";
 import { ProjectDetail } from "@/pages/ProjectDetail";
+import { IssueDetail } from "@/pages/IssueDetail";
+import { seedIssueDetailCache } from "@/lib/issueDetailCache";
+import { Layout } from "@/components/Layout";
+import { Layout as ProductionLayout } from "@/components/Layout.production";
 import { PluginLauncherProvider } from "@/plugins/launchers";
 import { queryKeys } from "@/lib/queryKeys";
 import { storybookProjects, storybookIssues } from "../fixtures/paperclipData";
@@ -26,7 +31,7 @@ function WarmWorkspacePreview({ page }: { page: "agents" | "projects" }) {
 const meta = {
   title: "Pages/Warm Workspace",
   component: WarmWorkspacePreview,
-  parameters: { layout: "fullscreen" },
+  parameters: { layout: "fullscreen", docs: { description: { component: "Read-only sample data for design verification; not live E2E." } } },
 } satisfies Meta<typeof WarmWorkspacePreview>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -113,4 +118,215 @@ type ProjectDetailStory = StoryObj;
 export const ProjectDetailPage: ProjectDetailStory = {
   render: () => <ProjectDetailScenario />,
   parameters: { layout: "fullscreen", a11y: { test: "off" } },
+};
+
+const TASK_DETAIL_FIXTURE = {
+  ...storybookIssues[0]!,
+  status: "todo" as const,
+  executionRunId: null,
+  checkoutRunId: null,
+  currentExecutionWorkspace: null,
+  executionWorkspaceId: null,
+  isUnreadForMe: false,
+};
+
+const TASK_PREVIEW_DATE = new Date("2026-09-14T00:00:00Z");
+const TASK_PREVIEW_COMMENTS: IssueComment[] = Array.from({ length: 18 }, (_, index) => ({
+  id: `warm-comment-${index + 1}`,
+  companyId: TASK_DETAIL_FIXTURE.companyId,
+  issueId: TASK_DETAIL_FIXTURE.id,
+  authorType: index % 2 ? "agent" : "user",
+  authorAgentId: index % 2 ? TASK_DETAIL_FIXTURE.assigneeAgentId : null,
+  authorUserId: index % 2 ? null : "user-board",
+  body: index === 17
+    ? "The review notes and implementation plan are attached. Check desktop thread scrolling, mobile properties, and keyboard navigation before accepting the layout."
+    : `Review checkpoint ${index + 1}\n\nKeep the task conversation, properties and composer accessible across desktop and mobile. This sample discussion exercises a populated thread without starting a live run.\n\n- Preserve the existing task actions.\n- Check long content and document navigation.`,
+  presentation: null,
+  metadata: null,
+  createdAt: new Date(TASK_PREVIEW_DATE.getTime() + index * 60_000),
+  updatedAt: new Date(TASK_PREVIEW_DATE.getTime() + index * 60_000),
+}));
+const TASK_PREVIEW_PLAN: IssueDocument = {
+  id: "warm-plan", companyId: TASK_DETAIL_FIXTURE.companyId, issueId: TASK_DETAIL_FIXTURE.id,
+  key: "plan", title: "Workspace layout review", format: "markdown",
+  latestRevisionId: "warm-plan-revision", latestRevisionNumber: 1,
+  createdByAgentId: null, createdByUserId: "user-board",
+  updatedByAgentId: null, updatedByUserId: "user-board",
+  lockedAt: null, lockedByAgentId: null, lockedByUserId: null,
+  createdAt: TASK_PREVIEW_DATE, updatedAt: TASK_PREVIEW_DATE,
+  body: "# Workspace layout review\n\n## Acceptance\n\n- Keep the composer visible on desktop.\n- Scroll the document on mobile.\n- Open properties and return to the conversation.\n\n## Verification\n\nUse read-only sample content; do not create agents, tasks or runs.",
+};
+const TASK_PREVIEW_ATTACHMENT: IssueAttachment = {
+  id: "warm-attachment", companyId: TASK_DETAIL_FIXTURE.companyId, issueId: TASK_DETAIL_FIXTURE.id,
+  issueCommentId: null, assetId: "warm-asset", provider: "local",
+  objectKey: "warm-preview/review-notes.txt", contentType: "text/plain", byteSize: 47,
+  sha256: "e57c1e3a8cefdaceef9ca1438d9d84e142247a166f4019acf5df0ef8e883de47",
+  originalFilename: "workspace-layout-review-notes.txt",
+  createdByAgentId: null, createdByUserId: "user-board",
+  createdAt: TASK_PREVIEW_DATE, updatedAt: TASK_PREVIEW_DATE,
+  contentPath: "/api/attachments/warm-attachment/content",
+};
+const TASK_PREVIEW_WORK_PRODUCT: IssueWorkProduct = {
+  id: "warm-work-product", companyId: TASK_DETAIL_FIXTURE.companyId,
+  projectId: TASK_DETAIL_FIXTURE.projectId, issueId: TASK_DETAIL_FIXTURE.id,
+  executionWorkspaceId: null, runtimeServiceId: null, type: "artifact", provider: "paperclip",
+  externalId: null, title: "Workspace layout review notes", url: TASK_PREVIEW_ATTACHMENT.contentPath,
+  status: "ready_for_review", reviewState: "needs_board_review", isPrimary: true, healthStatus: "unknown",
+  summary: "Read-only sample review notes for the populated task preview.",
+  metadata: { attachmentId: TASK_PREVIEW_ATTACHMENT.id, contentType: "text/plain",
+    byteSize: TASK_PREVIEW_ATTACHMENT.byteSize, contentPath: TASK_PREVIEW_ATTACHMENT.contentPath,
+    openPath: TASK_PREVIEW_ATTACHMENT.contentPath, downloadPath: TASK_PREVIEW_ATTACHMENT.contentPath,
+    originalFilename: TASK_PREVIEW_ATTACHMENT.originalFilename },
+  createdByRunId: null, createdAt: TASK_PREVIEW_DATE, updatedAt: TASK_PREVIEW_DATE,
+};
+
+function TaskDetailScenario({ classic, streamlined = true, entry = "?from=issues", state = "populated" }: {
+  classic: boolean;
+  streamlined?: boolean;
+  entry?: string;
+  state?: "populated" | "empty" | "loading" | "error";
+}) {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { selectedCompanyId, setSelectedCompanyId } = useCompany();
+  const [ready, setReady] = useState(false);
+  const [initialPath] = useState(location.pathname);
+  const target = `/PAP/issues/${TASK_DETAIL_FIXTURE.identifier}${entry}`;
+
+  useEffect(() => {
+    const originalFetch = window.fetch;
+    const settingsKey = queryKeys.instance.experimentalSettings;
+    const previousSettings = queryClient.getQueryData(settingsKey);
+    queryClient.setQueryData(settingsKey, {
+      enableClassicTaskInterface: classic,
+      enableStreamlinedUi: streamlined,
+    });
+    if (state !== "loading" && state !== "error") seedIssueDetailCache(queryClient, TASK_DETAIL_FIXTURE);
+    queryClient.setQueryData(
+      queryKeys.issues.listByDescendantRoot(PROJECT_DETAIL_COMPANY_ID, TASK_DETAIL_FIXTURE.id),
+      [],
+    );
+    // Polling and refetch-on-mount must stay inside this read-only preview.
+    window.fetch = async (input, init) => {
+      const rawUrl = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const url = new URL(rawUrl, window.location.origin);
+      const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
+      if (url.pathname.startsWith("/api/") && method !== "GET") {
+        return Response.json({ error: "This preview is read-only." }, { status: 403 });
+      }
+      if (url.pathname === "/api/health") {
+        return Response.json({ status: "ok", deploymentMode: "local_trusted" });
+      }
+      if (url.pathname === "/api/instance/settings/general") {
+        return Response.json({ keyboardShortcuts: true });
+      }
+      if (url.pathname === "/api/instance/settings/experimental") {
+        return Response.json({ enableClassicTaskInterface: classic, enableStreamlinedUi: streamlined });
+      }
+      if (url.pathname === TASK_PREVIEW_ATTACHMENT.contentPath) {
+        return new Response("Read-only sample: verify the workspace layout.\n", {
+          headers: { "Content-Type": "text/plain" },
+        });
+      }
+      const match = url.pathname.match(/^\/api\/issues\/([^/]+)(?:\/(.*))?$/);
+      if (match && [TASK_DETAIL_FIXTURE.id, TASK_DETAIL_FIXTURE.identifier].includes(match[1]!)) {
+        if (!match[2]) {
+          if (state === "loading") return new Promise<Response>(() => {});
+          if (state === "error") return Response.json({ error: "Sample task could not be loaded." }, { status: 503 });
+          return Response.json(TASK_DETAIL_FIXTURE);
+        }
+        if (state === "empty") {
+          if (match[2] === "documents/plan") return Response.json({ error: "No plan document." }, { status: 404 });
+          if (["comments", "attachments", "work-products", "documents"].includes(match[2])) return Response.json([]);
+        }
+        if (match[2] === "comments") return Response.json([...TASK_PREVIEW_COMMENTS].reverse());
+        if (match[2]?.startsWith("comments/")) {
+          const comment = TASK_PREVIEW_COMMENTS.find((item) => item.id === match[2]!.slice("comments/".length));
+          return comment ? Response.json(comment) : Response.json({ error: "Comment not found." }, { status: 404 });
+        }
+        if (match[2] === "attachments") return Response.json([TASK_PREVIEW_ATTACHMENT]);
+        if (match[2] === "work-products") return Response.json([TASK_PREVIEW_WORK_PRODUCT]);
+        if (match[2] === "documents") return Response.json([TASK_PREVIEW_PLAN]);
+        if (match[2] === "documents/plan") return Response.json(TASK_PREVIEW_PLAN);
+        if (["activity", "runs", "live-runs", "interactions", "approvals", "feedback-votes"].includes(match[2])) {
+          return Response.json([]);
+        }
+        if (["active-run", "watchdog"].includes(match[2])) return Response.json(null);
+        return Response.json({ error: "No fixture for this task endpoint." }, { status: 501 });
+      }
+      return originalFetch(input, init);
+    };
+    setReady(true);
+    return () => {
+      window.fetch = originalFetch;
+      queryClient.removeQueries({
+        predicate: ({ queryKey }) => queryKey.some((part) => part === TASK_DETAIL_FIXTURE.id || part === TASK_DETAIL_FIXTURE.identifier),
+      });
+      if (previousSettings === undefined) {
+        queryClient.removeQueries({ queryKey: settingsKey, exact: true });
+      } else {
+        queryClient.setQueryData(settingsKey, previousSettings);
+      }
+    };
+  }, [classic, queryClient, state, streamlined]);
+
+  useEffect(() => {
+    if (selectedCompanyId !== PROJECT_DETAIL_COMPANY_ID) setSelectedCompanyId(PROJECT_DETAIL_COMPANY_ID);
+  }, [selectedCompanyId, setSelectedCompanyId]);
+  useEffect(() => {
+    if (location.pathname === initialPath && initialPath !== target) navigate(target, { replace: true });
+  }, [initialPath, location.pathname, navigate, target]);
+
+  if (!ready || selectedCompanyId !== PROJECT_DETAIL_COMPANY_ID) return null;
+  return (
+    <PluginLauncherProvider>
+      <Routes>
+        <Route path="/:companyPrefix" element={streamlined ? <Layout /> : <ProductionLayout />}>
+          <Route path="issues/:issueId" element={<IssueDetail />} />
+          <Route path="*" element={<p>Preview navigation: {location.pathname}</p>} />
+        </Route>
+      </Routes>
+    </PluginLauncherProvider>
+  );
+}
+
+export const TaskDetailChatShell: StoryObj = {
+  render: () => <TaskDetailScenario classic={false} />,
+};
+
+export const TaskDetailClassic: StoryObj = {
+  render: () => <TaskDetailScenario classic />,
+};
+
+export const TaskDetailProductionChatShell: StoryObj = {
+  render: () => <TaskDetailScenario classic={false} streamlined={false} />,
+};
+
+export const TaskDetailProductionClassic: StoryObj = {
+  render: () => <TaskDetailScenario classic streamlined={false} />,
+};
+
+export const TaskDetailInboxEntry: StoryObj = {
+  render: () => <TaskDetailScenario classic={false} entry="?from=inbox" />,
+};
+
+export const TaskDetailPlanLink: StoryObj = {
+  render: () => <TaskDetailScenario classic={false} entry="?from=issues#document-plan" />,
+};
+
+export const TaskDetailCommentLink: StoryObj = {
+  render: () => <TaskDetailScenario classic={false} entry="?from=issues#comment-warm-comment-4" />,
+};
+
+export const TaskDetailEmpty: StoryObj = {
+  render: () => <TaskDetailScenario classic={false} state="empty" />,
+};
+
+export const TaskDetailLoading: StoryObj = {
+  render: () => <TaskDetailScenario classic={false} state="loading" />,
+};
+
+export const TaskDetailError: StoryObj = {
+  render: () => <TaskDetailScenario classic={false} state="error" />,
 };

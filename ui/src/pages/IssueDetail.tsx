@@ -2862,6 +2862,7 @@ export function IssueDetail() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [mobilePropsOpen, setMobilePropsOpen] = useState(false);
+  const mobilePropsReturnFocusRef = useRef<HTMLElement | null>(null);
   const [documentDeepLink, setDocumentDeepLink] = useState<
     (IssuePropertiesDocumentDeepLink & { issueId: string }) | null
   >(null);
@@ -6980,7 +6981,7 @@ export function IssueDetail() {
           </div>
         )}
 
-        {!streamlinedTaskDetailEnabled && !(isMobile && isFromInbox) && (
+        {!(isMobile && isFromInbox) && (
           <div className="ml-auto flex items-center gap-0.5 md:hidden shrink-0">
             <Button
               variant="ghost"
@@ -6997,7 +6998,10 @@ export function IssueDetail() {
             <Button
               variant="ghost"
               size="icon-xs"
-              onClick={() => setMobilePropsOpen(true)}
+              onClick={(event) => {
+                mobilePropsReturnFocusRef.current = event.currentTarget;
+                setMobilePropsOpen(true);
+              }}
               title="Properties"
             >
               <SlidersHorizontal className="h-4 w-4" />
@@ -8034,6 +8038,20 @@ export function IssueDetail() {
                     ? "right"
                     : "bottom"
               }
+              onOpenAutoFocus={() => {
+                if (!mobilePropsReturnFocusRef.current?.isConnected) {
+                  mobilePropsReturnFocusRef.current = document.activeElement instanceof HTMLElement
+                    ? document.activeElement
+                    : null;
+                }
+              }}
+              onCloseAutoFocus={(event) => {
+                if (mobilePropsReturnFocusRef.current?.isConnected) {
+                  event.preventDefault();
+                  mobilePropsReturnFocusRef.current.focus();
+                }
+                mobilePropsReturnFocusRef.current = null;
+              }}
               showCloseButton={!taskChatShellEnabled}
               className={cn(
                 taskChatShellEnabled

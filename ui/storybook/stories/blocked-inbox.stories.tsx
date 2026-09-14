@@ -168,7 +168,10 @@ const fixtureIssues: Issue[] = [
 function PrimeBlockedFixtures({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   useMemo(() => {
-    queryClient.setQueryData(queryKeys.issues.listBlockedAttention(companyId), fixtureIssues);
+    queryClient.setQueryData(
+      [...queryKeys.issues.listBlockedAttention(companyId), "live-descendant-summary"],
+      fixtureIssues,
+    );
   }, [queryClient]);
   return <>{children}</>;
 }

@@ -2707,6 +2707,8 @@ describe("IssueDetail", () => {
       .map(([node]) => node)
       .filter(Boolean)
       .at(-1) as ReactNode;
+    expect(liveToolbar).toBeTruthy();
+    expect(container.querySelector('button[title="Properties"]')).toBeNull();
     const toolbarContainer = document.createElement("div");
     document.body.appendChild(toolbarContainer);
     const toolbarRoot = createRoot(toolbarContainer);
@@ -4890,6 +4892,63 @@ describe("IssueDetail", () => {
         // @ts-expect-error test cleanup for optional browser API
         delete window.isSecureContext;
       }
+    }
+  });
+
+  it.each([
+    { classic: false, streamlined: false, mobile: false },
+    { classic: false, streamlined: false, mobile: true },
+    { classic: false, streamlined: true, mobile: false },
+    { classic: false, streamlined: true, mobile: true },
+    { classic: true, streamlined: false, mobile: false },
+    { classic: true, streamlined: false, mobile: true },
+    { classic: true, streamlined: true, mobile: false },
+    { classic: true, streamlined: true, mobile: true },
+  ])("preserves task shell and tabs with classic=$classic streamlined=$streamlined mobile=$mobile", async ({ classic, streamlined, mobile }) => {
+    mockSidebarState.isMobile = mobile;
+    mockInstanceSettingsApi.getExperimental.mockResolvedValue({
+      enableClassicTaskInterface: classic,
+      enableStreamlinedUi: streamlined,
+      enableIssuePlanDecompositions: false,
+      enableExperimentalFileViewer: false,
+      enableExternalObjects: false,
+    });
+    mockIssuesApi.get.mockResolvedValue(createIssue());
+
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <IssueDetail />
+        </QueryClientProvider>,
+      );
+    });
+    await flushReact();
+    await flushReact();
+
+    if (mobile) {
+      const propertiesButton = container.querySelector<HTMLButtonElement>('button[title="Properties"]');
+      expect(propertiesButton).not.toBeNull();
+      const updatesBeforeOpening = mockIssuesApi.update.mock.calls.length;
+      await act(async () => propertiesButton!.click());
+      expect(container.querySelector('[data-slot="sheet-content"]')).not.toBeNull();
+      expect(mockIssuesApi.update).toHaveBeenCalledTimes(updatesBeforeOpening);
+    }
+
+    const shell = container.querySelector("[data-task-chat-shell]");
+    const chatTab = Array.from(container.querySelectorAll("button")).find(
+      (tab) => tab.textContent === "Chat",
+    );
+    if (classic) {
+      expect(shell).toBeNull();
+      expect(chatTab).toBeDefined();
+      expect(container.querySelector('[data-testid="issue-chat-thread"]')).not.toBeNull();
+    } else {
+      expect(shell).not.toBeNull();
+      expect(shell!.classList.contains("h-full")).toBe(!mobile);
+      expect(shell!.classList.contains("min-h-0")).toBe(!mobile);
+      expect(shell!.classList.contains(mobile ? "gap-6" : "gap-3")).toBe(true);
+      expect(chatTab).toBeUndefined();
+      expect(container.querySelector('[data-testid="task-chat-thread"]')).not.toBeNull();
     }
   });
 
