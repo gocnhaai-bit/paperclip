@@ -1,3 +1,10 @@
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Routes, Route, useLocation, useNavigate } from "@/lib/router";
+import { Search as SearchPage } from "@/pages/Search";
+import { Layout } from "@/components/Layout";
+import { PluginLauncherProvider } from "@/plugins/launchers";
+import { queryKeys } from "@/lib/queryKeys";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type {
   CompanySearchFilterOptionCounts,
@@ -781,3 +788,56 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const SearchSurfaces: Story = {};
+
+function SearchRouteScenario({ state = "populated" }: { state?: "populated" | "empty" | "loading" | "error" }) {
+  const client = useQueryClient();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [initialPath] = useState(location.pathname);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const originalFetch = window.fetch;
+    const key = queryKeys.instance.experimentalSettings;
+    const previous = client.getQueryData(key);
+    client.setQueryData(key, { enableStreamlinedUi: true });
+    window.fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, window.location.origin);
+      const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
+      if (url.pathname.startsWith("/api/") && method !== "GET") return Response.json({ error: "This preview is read-only." }, { status: 403 });
+      if (url.pathname === "/api/health") return Response.json({ status: "ok", deploymentMode: "local_trusted" });
+      if (url.pathname === "/api/instance/settings/general") return Response.json({ keyboardShortcuts: true });
+      if (url.pathname === "/api/instance/settings/experimental") return Response.json({ enableStreamlinedUi: true });
+      if (url.pathname === "/api/companies/company-storybook/search") {
+        if (state === "loading") return new Promise<Response>(() => {});
+        if (state === "error") return Response.json({ error: "Sample search could not be loaded." }, { status: 503 });
+        const q = url.searchParams.get("q") ?? "";
+        const results = state === "empty" ? [] : fixtureResponse.results.filter((result) => q.toLowerCase().split(/\s+/).every((term) => `${result.title} ${result.snippet ?? ""}`.toLowerCase().includes(term)));
+        return Response.json({ ...fixtureResponse, query: q, normalizedQuery: q, results,
+          countsByType: { issue: results.filter((item) => item.type === "issue").length, comment: 0, document: 0, artifact: 0, agent: results.filter((item) => item.type === "agent").length, project: results.filter((item) => item.type === "project").length },
+        });
+      }
+      return originalFetch(input, init);
+    };
+    setReady(true);
+    return () => {
+      window.fetch = originalFetch;
+      client.removeQueries({ queryKey: ["search"] });
+      if (previous === undefined) client.removeQueries({ queryKey: key, exact: true });
+      else client.setQueryData(key, previous);
+    };
+  }, [client, state]);
+  useEffect(() => {
+    if (location.pathname === initialPath) navigate("/PAP/search?q=auth", { replace: true });
+  }, [initialPath, location.pathname, navigate]);
+  if (!ready) return null;
+  return <PluginLauncherProvider><Routes>
+    <Route path="/:companyPrefix" element={<Layout />}>
+      <Route path="search" element={<SearchPage />} />
+      <Route path="*" element={<p>Preview navigation: {location.pathname}</p>} />
+    </Route>
+  </Routes></PluginLauncherProvider>;
+}
+export const FullShellResults: StoryObj = { render: () => <SearchRouteScenario />, parameters: { layout: "fullscreen" } };
+export const FullShellEmpty: StoryObj = { render: () => <SearchRouteScenario state="empty" />, parameters: { layout: "fullscreen" } };
+export const FullShellLoading: StoryObj = { render: () => <SearchRouteScenario state="loading" />, parameters: { layout: "fullscreen" } };
+export const FullShellError: StoryObj = { render: () => <SearchRouteScenario state="error" />, parameters: { layout: "fullscreen" } };

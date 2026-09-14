@@ -1,10 +1,14 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 import type { StorybookConfig } from "@storybook/react-vite";
 import tailwindcss from "@tailwindcss/vite";
 import { mergeConfig } from "vite";
 
 const storybookConfigDir = path.dirname(fileURLToPath(import.meta.url));
+const { serveWarmWorkspaceAttachment } = createRequire(import.meta.url)(
+  "../../../scripts/storybook-warm-workspace-attachment.mjs",
+);
 
 const config: StorybookConfig = {
   stories: ["../stories/**/*.stories.@(ts|tsx|mdx)"],
@@ -19,7 +23,15 @@ const config: StorybookConfig = {
   },
   viteFinal: async (baseConfig) =>
     mergeConfig(baseConfig, {
-      plugins: [tailwindcss()],
+      plugins: [
+        tailwindcss(),
+        {
+          name: "warm-workspace-attachment-fixture",
+          configureServer(server) {
+            server.middlewares.use(serveWarmWorkspaceAttachment);
+          },
+        },
+      ],
       optimizeDeps: { include: ["motion/react", "react", "react-dom"] },
       resolve: {
         // Storybook's core and the react-vite builder each resolve their own

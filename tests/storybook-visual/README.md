@@ -18,6 +18,24 @@ pnpm test:storybook-visual:update
 `tests/storybook-visual/.snapshots/`, and checks the PNG count. The same snapshot
 directory can be overridden with `STORYBOOK_VISUAL_SNAPSHOT_DIR`.
 
+## Local behavior checks (no pixel baseline)
+
+Warm Workspace geometry and link regression tests do not compare screenshots or
+require the external Linux baseline:
+
+```sh
+pnpm build-storybook
+pnpm exec playwright test --config tests/storybook-visual/playwright.config.ts 'warm-workspace-.*\.spec\.ts' --workers=1
+node --test scripts/storybook-warm-workspace-attachment.test.mjs
+```
+
+These use the real task route with read-only fixtures, not live E2E. The local
+static server and Storybook dev middleware serve only the explicitly registered
+sample attachment, including native navigation and `download=1` disposition.
+Unknown paths are not replaced with successful fixture responses. Restart an
+owned Storybook dev process normally after changing its config; do not restart
+another session's process for this check.
+
 ## Known Limitation: Linux Baselines
 
 Storybook visual baselines are platform-locked. The checked-in manifest records

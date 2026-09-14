@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "@/lib/router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { goalsApi } from "../api/goals";
@@ -18,6 +18,7 @@ import { PageSkeleton } from "../components/PageSkeleton";
 import { cn, projectUrl } from "../lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Plus, SlidersHorizontal } from "lucide-react";
 import type { Goal, Project } from "@paperclipai/shared";
 
@@ -53,6 +54,7 @@ export function GoalDetail() {
   const { openPanel, closePanel, panelVisible, setPanelVisible } = usePanel();
   const { setBreadcrumbs } = useBreadcrumbs();
   const queryClient = useQueryClient();
+  const [mobilePropertiesOpen, setMobilePropertiesOpen] = useState(false);
 
   const {
     data: goal,
@@ -76,6 +78,10 @@ export function GoalDetail() {
     queryFn: () => projectsApi.list(resolvedCompanyId!, { includeArchived: true }),
     enabled: !!resolvedCompanyId
   });
+
+  useEffect(() => {
+    setMobilePropertiesOpen(false);
+  }, [goalId]);
 
   useEffect(() => {
     if (!goal?.companyId || goal.companyId === selectedCompanyId) return;
@@ -148,6 +154,19 @@ export function GoalDetail() {
           </span>
           <StatusBadge status={goal.status} />
           <div className="ml-auto">
+            <Sheet open={mobilePropertiesOpen} onOpenChange={setMobilePropertiesOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon-xs" className="md:hidden" title="Show goal properties" aria-label="Show goal properties">
+                  <SlidersHorizontal className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="overflow-y-auto" aria-describedby={undefined}>
+                <SheetHeader><SheetTitle>Goal properties</SheetTitle></SheetHeader>
+                <div className="p-4">
+                  <GoalProperties goal={goal} onUpdate={(data) => updateGoal.mutate(data)} />
+                </div>
+              </SheetContent>
+            </Sheet>
             <GoalPropertiesToggleButton
               panelVisible={panelVisible}
               onShowProperties={() => setPanelVisible(true)}

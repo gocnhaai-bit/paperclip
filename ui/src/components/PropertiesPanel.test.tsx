@@ -108,8 +108,8 @@ describe("PropertiesPanel", () => {
       expect(aside!.style.width).toBe("320px");
       expect(aside!.querySelector('[role="separator"]')).toBeNull();
       expect(container.querySelector('[aria-label="Maximize side panel"]')).toBeNull();
-      // Inner wrapper keeps the hardcoded width classes exactly as today.
-      expect(aside!.querySelector(".w-80")).not.toBeNull();
+      expect(aside!.className).not.toContain("border-l");
+      expect(aside!.querySelector(".w-80")?.className).toContain("border-l");
     });
 
     it("collapses to width 0 when the panel is hidden", async () => {
@@ -117,6 +117,8 @@ describe("PropertiesPanel", () => {
       const aside = container.querySelector("aside");
       expect(aside!.style.width).toBe("0px");
       expect(aside!.style.opacity).toBe("0");
+      expect(aside!.hasAttribute("inert")).toBe(true);
+      expect(aside!.getAttribute("aria-hidden")).toBe("true");
     });
   });
 
@@ -150,12 +152,21 @@ describe("PropertiesPanel", () => {
         '[aria-label="Maximize side panel"]',
       )!;
 
-      expect(aside.className).toContain("border-l");
+      const frame = container.querySelector("section")!;
+      expect(aside.className).not.toContain("border-l");
+      expect(frame.className).toContain("border-l");
+      expect(frame.className).not.toContain("border-l-0");
       maximize.click();
       await flushReact();
 
       expect(aside.className).not.toContain("border-l");
-      expect(container.querySelector("section")?.getAttribute("data-maximized")).toBe("true");
+      expect(frame.className).toContain("border-l-0");
+      expect(frame.getAttribute("data-maximized")).toBe("true");
+
+      container.querySelector<HTMLButtonElement>('[aria-label="Restore side panel"]')!.click();
+      await flushReact();
+      expect(frame.className).not.toContain("border-l-0");
+      expect(frame.getAttribute("data-maximized")).toBe("false");
     });
 
     it("consumes a pending deep-link maximize request on mount (LOOA-2181)", async () => {
@@ -215,6 +226,8 @@ describe("PropertiesPanel", () => {
       const aside = container.querySelector("aside");
       expect(aside!.style.width).toBe("0px");
       expect(aside!.style.opacity).toBe("0");
+      expect(aside!.hasAttribute("inert")).toBe(true);
+      expect(aside!.getAttribute("aria-hidden")).toBe("true");
       // No grip while hidden.
       expect(aside!.querySelector('[role="separator"]')).toBeNull();
     });

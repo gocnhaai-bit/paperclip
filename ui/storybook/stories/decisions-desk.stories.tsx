@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useQueryClient } from "@tanstack/react-query";
 import type {
@@ -8,7 +8,10 @@ import type {
   AttentionSeverity,
   AttentionSourceKind,
 } from "@paperclipai/shared";
-import { Routes, Route } from "@/lib/router";
+import { Routes, Route, useNavigate, useLocation } from "@/lib/router";
+import { Layout } from "@/components/Layout";
+import { Layout as ProductionLayout } from "@/components/Layout.production";
+import { PluginLauncherProvider } from "@/plugins/launchers";
 import { WhatNeedsMe } from "@/pages/WhatNeedsMe";
 import { DecisionQueuePage } from "@/pages/DecisionQueuePage";
 import { AttentionQueueRow } from "@/components/AttentionQueueRow";
@@ -457,6 +460,70 @@ type Story = StoryObj;
  * arrival groups "New today" / "Earlier", with decide-by + provenance ("set by
  * Prioritizer") on the cards.
  */
+function DecisionsRouteScenario({ state = "populated", streamlined = true, queue = false }: {
+  state?: "populated" | "empty" | "loading" | "error";
+  streamlined?: boolean;
+  queue?: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [initialPath] = useState(location.pathname);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const originalFetch = window.fetch;
+    const settingsKey = queryKeys.instance.experimentalSettings;
+    const previous = queryClient.getQueryData(settingsKey);
+    queryClient.setQueryData(settingsKey, { enableStreamlinedUi: streamlined });
+    window.fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, window.location.origin);
+      const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
+      if (url.pathname.startsWith("/api/") && method !== "GET") return Response.json({ error: "This preview is read-only." }, { status: 403 });
+      if (url.pathname === "/api/health") return Response.json({ status: "ok", deploymentMode: "local_trusted" });
+      if (url.pathname === "/api/instance/settings/general") return Response.json({ keyboardShortcuts: true });
+      if (url.pathname === "/api/instance/settings/experimental") return Response.json({ enableStreamlinedUi: streamlined });
+      if (url.pathname === `/api/companies/${companyId}/decision-queues`) return Response.json(QUEUES);
+      if (url.pathname === `/api/companies/${companyId}/decisions`) return Response.json([]);
+      if (url.pathname === `/api/companies/${companyId}/attention`) {
+        if (state === "loading") return new Promise<Response>(() => {});
+        if (state === "error") return Response.json({ error: "Sample decisions could not be loaded." }, { status: 503 });
+        let items = state === "empty" ? [] : DESK_ITEMS;
+        const key = url.searchParams.get("queue");
+        if (key) items = items.filter((item) => item.queues.some((queue) => queue.key === key));
+        return Response.json(feed(items));
+      }
+      if (/\/decision-queues\//.test(url.pathname)) return Response.json({ error: "No fixture for this decision endpoint." }, { status: 501 });
+      return originalFetch(input, init);
+    };
+    setReady(true);
+    return () => {
+      window.fetch = originalFetch;
+      queryClient.removeQueries({ queryKey: queryKeys.attention(companyId) });
+      queryClient.removeQueries({ queryKey: queryKeys.decisionQueues.list(companyId) });
+      if (previous === undefined) queryClient.removeQueries({ queryKey: settingsKey, exact: true });
+      else queryClient.setQueryData(settingsKey, previous);
+    };
+  }, [queryClient, state, streamlined]);
+  useEffect(() => {
+    if (location.pathname === initialPath) navigate(`/PAP/decisions${queue ? "/queues/prs" : ""}`, { replace: true });
+  }, [initialPath, location.pathname, navigate, queue]);
+  if (!ready) return null;
+  return <PluginLauncherProvider><Routes>
+    <Route path="/:companyPrefix" element={streamlined ? <Layout /> : <ProductionLayout />}>
+      <Route path="decisions" element={<WhatNeedsMe />} />
+      <Route path="decisions/queues/:key" element={<DecisionQueuePage />} />
+      <Route path="*" element={<p>Preview navigation: {location.pathname}</p>} />
+    </Route>
+  </Routes></PluginLauncherProvider>;
+}
+
+export const FullShellDesk: Story = { render: () => <DecisionsRouteScenario /> };
+export const FullShellQueue: Story = { render: () => <DecisionsRouteScenario queue /> };
+export const FullShellProductionDesk: Story = { render: () => <DecisionsRouteScenario streamlined={false} /> };
+export const FullShellEmpty: Story = { render: () => <DecisionsRouteScenario state="empty" /> };
+export const FullShellLoading: Story = { render: () => <DecisionsRouteScenario state="loading" /> };
+export const FullShellError: Story = { render: () => <DecisionsRouteScenario state="error" /> };
+
 export const TodaysDesk: Story = {
   render: () => (
     <PrimeDeskFixtures items={DESK_ITEMS}>

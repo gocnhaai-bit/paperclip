@@ -6,6 +6,7 @@ import { createServer } from "node:http";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { serveWarmWorkspaceAttachment } from "./storybook-warm-workspace-attachment.mjs";
 
 const root = resolve(
   fileURLToPath(new URL(".", import.meta.url)),
@@ -55,6 +56,9 @@ const MIME = {
 };
 
 const server = createServer((req, res) => {
+  let handled = true;
+  serveWarmWorkspaceAttachment(req, res, () => { handled = false; });
+  if (handled) return;
   const url = new URL(req.url ?? "/", `http://localhost:${port}`);
   let filePath = normalize(join(root, decodeURIComponent(url.pathname)));
   if (!filePath.startsWith(root)) {

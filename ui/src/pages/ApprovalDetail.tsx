@@ -27,7 +27,7 @@ export function ApprovalDetail() {
   const [error, setError] = useState<string | null>(null);
   const [showRawPayload, setShowRawPayload] = useState(false);
 
-  const { data: approval, isLoading } = useQuery({
+  const { data: approval, isLoading, error: loadError } = useQuery({
     queryKey: queryKeys.approvals.detail(approvalId!),
     queryFn: () => approvalsApi.get(approvalId!),
     enabled: !!approvalId,
@@ -142,6 +142,7 @@ export function ApprovalDetail() {
   });
 
   if (isLoading) return <PageSkeleton variant="detail" />;
+  if (loadError && !approval) return <p role="alert" className="text-sm text-destructive">{loadError.message}</p>;
   if (!approval) return <p className="text-sm text-muted-foreground">Approval not found.</p>;
 
   const payload = approval.payload as Record<string, unknown>;
@@ -172,6 +173,7 @@ export function ApprovalDetail() {
 
   return (
     <div className="space-y-6 max-w-3xl">
+      {loadError && <p role="alert" className="text-sm text-destructive">{loadError.message}</p>}
       {showApprovedBanner && (
         <div className="border border-green-300 dark:border-green-700/40 bg-green-50 dark:bg-green-900/20 rounded-lg px-4 py-3 animate-in fade-in zoom-in-95 duration-300">
           <div className="flex items-start justify-between gap-3">
