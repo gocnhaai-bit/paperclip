@@ -4,6 +4,8 @@
 
 Paperclip's built-in HTTP adapter may reach exactly `https://agent-baquan-hermes.tail9452c0.ts.net:8447/run` when MagicDNS resolves that hostname to a private Tailscale address. Matching occurs after URL parsing and requires HTTPS, the exact hostname, explicit port `8447`, path `/run`, no user information, query, or fragment. Other private addresses, Tailscale IP literals, sibling tailnet hostnames, ports, and paths remain subject to the default SSRF guard. Link-local addresses remain denied even if returned for the allowed hostname. HTTP adapter redirects are rejected rather than followed.
 
+The HTTP request deadline comes from `adapterConfig.timeoutSec` and applies to both the overall abort signal and guarded transport response timeout. Positive values are capped at 600 seconds; the legacy `timeoutMs` field remains a lower-priority compatibility fallback under the same cap.
+
 This exception changes only Paperclip egress validation. DSH bridge creation, credentials, and agent adapter configuration remain operator-owned and are not part of this patch.
 
 ## SSH adapter status

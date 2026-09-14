@@ -70,6 +70,41 @@ describe("http adapter execute", () => {
     expect(onDispatch).toHaveBeenCalledOnce();
   });
 
+  it.each([
+    { config: { timeoutSec: 600 }, expectedMs: 600_000 },
+    { config: { timeoutSec: 900 }, expectedMs: 600_000 },
+    { config: { timeoutSec: 600, timeoutMs: 1 }, expectedMs: 600_000 },
+    { config: { timeoutMs: 900_000 }, expectedMs: 600_000 },
+  ])("passes the configured timeout through with a $expectedMs ms safety cap", async ({ config, expectedMs }) => {
+    guardedFetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+
+    await execute({
+      runId: "run-1",
+      agent: {
+        id: "agent-1",
+        companyId: "company-1",
+        name: "Agent",
+        adapterType: "http",
+        adapterConfig: {},
+      },
+      runtime: {
+        sessionId: null,
+        sessionParams: null,
+        sessionDisplayId: null,
+        taskKey: null,
+      },
+      config: { url: "https://example.test/webhook", ...config },
+      context: {},
+      onLog: async () => {},
+    });
+
+    expect(guardedFetchMock).toHaveBeenCalledWith(
+      "https://example.test/webhook",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      { responseTimeoutMs: expectedMs },
+    );
+  });
+
   it("reports configured request timeout as timed_out", async () => {
     guardedFetchMock.mockImplementation(
       (_url: string, init?: RequestInit) => new Promise((_resolve, reject) => {
@@ -96,7 +131,7 @@ describe("http adapter execute", () => {
       },
       config: {
         url: "https://example.test/webhook",
-        timeoutMs: 1,
+        timeoutSec: 0.001,
       },
       context: {},
       onLog: async () => {},

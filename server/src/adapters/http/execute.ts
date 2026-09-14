@@ -2,13 +2,25 @@ import type { AdapterExecutionContext, AdapterExecutionResult } from "../types.j
 import { asString, asNumber, parseObject } from "../utils.js";
 import { guardedHttpAdapterFetch } from "./remote-fetch.js";
 
+const MAX_HTTP_ADAPTER_TIMEOUT_MS = 600_000;
+
+function resolveRequestTimeoutMs(config: Record<string, unknown>): number {
+  const timeoutSec = asNumber(config.timeoutSec, 0);
+  const configuredMs = timeoutSec > 0
+    ? timeoutSec * 1000
+    : asNumber(config.timeoutMs, 0);
+  return configuredMs > 0
+    ? Math.min(configuredMs, MAX_HTTP_ADAPTER_TIMEOUT_MS)
+    : 0;
+}
+
 export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExecutionResult> {
   const { config, runId, agent, context } = ctx;
   const url = asString(config.url, "");
   if (!url) throw new Error("HTTP adapter missing url");
 
   const method = asString(config.method, "POST");
-  const timeoutMs = asNumber(config.timeoutMs, 0);
+  const timeoutMs = resolveRequestTimeoutMs(config);
   const headers = parseObject(config.headers) as Record<string, string>;
   const payloadTemplate = parseObject(config.payloadTemplate);
   const body = {
@@ -35,7 +47,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       },
       body: JSON.stringify(body),
       ...(timer ? { signal: controller.signal } : {}),
-    });
+    }, timer ? { responseTimeoutMs: timeoutMs } : {});
 
     if (!res.ok) {
       throw new Error(`HTTP invoke failed with status ${res.status}`);
