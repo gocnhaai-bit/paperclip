@@ -3,6 +3,7 @@ import type {
   AuditActionsResponse,
 } from "@/api/audit";
 import type {
+  HeartbeatRun,
   BudgetOverview,
   CostByAgent,
   CostByAgentModel,
@@ -43,11 +44,9 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
  *   → `<Costs embedded initialTab="overview" hideBudgetsTab />`
  * - production costs: `/:company/costs` → `Costs.production` (standalone)
  *
- * Scope: only Activity and Costs are previewed here (populated/empty/loading/
- * error) — not browser-verified yet. Runs/Budgets/Timeline sections of
- * AuditHub are NOT covered by this file — they render other components
- * (AuditRuns/Timeline) whose queries were not inspected for this task and
- * stay unverified.
+ * Scope: Activity, Costs, Runs and streamlined Budgets have read-only state previews.
+ * Timeline reuses the global sample for a populated preview. Sibling navigation uses
+ * actual AuditHub route owners without submitting budget changes.
  */
 
 const AUDIT_COMPANY_ID = "company-storybook";
@@ -58,6 +57,22 @@ const AUDIT_COMPANY_ID = "company-storybook";
 
 const AUDIT_SAMPLE_DATE = new Date("2026-09-14T00:00:00Z");
 const auditAt = (minutesAgo: number) => new Date(AUDIT_SAMPLE_DATE.getTime() - minutesAgo * 60_000).toISOString();
+
+const AUDIT_RUNS: HeartbeatRun[] = (["succeeded", "failed"] as const).map((status, index) => ({
+  id: `warm-audit-run-${index}`, companyId: AUDIT_COMPANY_ID, agentId: "agent-codex",
+  invocationSource: "on_demand", triggerDetail: null, status, responsibleUserId: "user-board",
+  startedAt: new Date("2026-09-14T00:00:00Z"), finishedAt: new Date("2026-09-14T00:01:00Z"),
+  error: status === "failed" ? "Sample verification failed" : null, wakeupRequestId: null,
+  exitCode: status === "failed" ? 1 : 0, signal: null, usageJson: null,
+  resultJson: { summary: status === "failed" ? "Sample verification failed" : "Sample verification completed" },
+  sessionIdBefore: null, sessionIdAfter: null, logStore: null, logRef: null, logBytes: null,
+  logSha256: null, logCompressed: false, stdoutExcerpt: null, stderrExcerpt: null, errorCode: null,
+  externalRunId: null, processPid: null, processStartedAt: null, lastOutputAt: null,
+  lastOutputSeq: 0, lastOutputStream: null, lastOutputBytes: null, retryOfRunId: null,
+  processLossRetryCount: 0, livenessState: null, livenessReason: null, continuationAttempt: 0,
+  lastUsefulActionAt: null, nextAction: null, contextSnapshot: null,
+  createdAt: new Date("2026-09-14T00:00:00Z"), updatedAt: new Date("2026-09-14T00:01:00Z"),
+}));
 
 const AUDIT_ACTION_RECORDS: AuditActionRecord[] = [
   {
@@ -311,7 +326,7 @@ function AuditCostsScenario({
   layout,
   state,
 }: {
-  scope: "activity" | "costs";
+  scope: "activity" | "costs" | "budgets" | "runs" | "timeline";
   layout: "streamlined" | "production";
   state: PreviewState;
 }) {
@@ -322,7 +337,7 @@ function AuditCostsScenario({
   const [ready, setReady] = useState(false);
   const [initialPath] = useState(location.pathname);
   const streamlined = layout === "streamlined";
-  const target = `/PAP${scope === "costs" ? (streamlined ? "/activity/costs" : "/costs") : "/activity"}`;
+  const target = `/PAP${scope === "activity" ? "/activity" : streamlined ? `/activity/${scope}` : "/costs"}`;
 
   useEffect(() => {
     const originalFetch = window.fetch;
@@ -350,6 +365,13 @@ function AuditCostsScenario({
       // user-directory and agents list are served by the global Storybook
       // fetch stub (installed at preview module load, ahead of this mock) —
       // fall through to originalFetch for those instead of re-declaring them.
+
+      if (url.pathname === `/api/companies/${AUDIT_COMPANY_ID}/heartbeat-runs`) {
+        if (state === "loading") return new Promise<Response>(() => {});
+        if (state === "error") return Response.json({ error: "Sample runs could not be loaded." }, { status: 503 });
+        const agentId = url.searchParams.get("agentId");
+        return Response.json(state === "empty" ? [] : AUDIT_RUNS.filter((run) => !agentId || run.agentId === agentId));
+      }
 
       // Activity/audit endpoint family.
       if (url.pathname === `/api/companies/${AUDIT_COMPANY_ID}/audit/agent-actions`) {
@@ -447,14 +469,20 @@ function AuditCostsScenario({
   const page = scope === "activity" ? (
     streamlined ? <CompanyActivity /> : <ProductionCompanyActivity />
   ) : (
-    streamlined ? <AuditHub section="costs" /> : <ProductionCosts />
+    streamlined ? <AuditHub section={scope} /> : <ProductionCosts />
   );
 
   return (
     <PluginLauncherProvider>
       <Routes>
         <Route path="/:companyPrefix" element={streamlined ? <Layout /> : <ProductionLayout />}>
-          <Route path={scope === "costs" && streamlined ? "activity/costs" : scope} element={page} />
+          {streamlined ? <>
+            <Route path="activity" element={<CompanyActivity />} />
+            <Route path="activity/costs" element={<AuditHub section="costs" />} />
+            <Route path="activity/timeline" element={<AuditHub section="timeline" />} />
+            <Route path="activity/runs" element={<AuditHub section="runs" />} />
+            <Route path="activity/budgets" element={<AuditHub section="budgets" />} />
+          </> : <Route path={scope === "activity" ? "activity" : "costs"} element={page} />}
           <Route path="*" element={<p>Preview navigation: {location.pathname}</p>} />
         </Route>
       </Routes>
@@ -514,6 +542,36 @@ export const CostsStreamlinedLoading: Story = {
 };
 export const CostsStreamlinedError: Story = {
   render: () => <AuditCostsScenario scope="costs" layout="streamlined" state="error" />,
+};
+
+export const TimelinePopulated: Story = {
+  render: () => <AuditCostsScenario scope="timeline" layout="streamlined" state="populated" />,
+};
+
+export const RunsPopulated: Story = {
+  render: () => <AuditCostsScenario scope="runs" layout="streamlined" state="populated" />,
+};
+export const RunsEmpty: Story = {
+  render: () => <AuditCostsScenario scope="runs" layout="streamlined" state="empty" />,
+};
+export const RunsLoading: Story = {
+  render: () => <AuditCostsScenario scope="runs" layout="streamlined" state="loading" />,
+};
+export const RunsError: Story = {
+  render: () => <AuditCostsScenario scope="runs" layout="streamlined" state="error" />,
+};
+
+export const BudgetsPopulated: Story = {
+  render: () => <AuditCostsScenario scope="budgets" layout="streamlined" state="populated" />,
+};
+export const BudgetsEmpty: Story = {
+  render: () => <AuditCostsScenario scope="budgets" layout="streamlined" state="empty" />,
+};
+export const BudgetsLoading: Story = {
+  render: () => <AuditCostsScenario scope="budgets" layout="streamlined" state="loading" />,
+};
+export const BudgetsError: Story = {
+  render: () => <AuditCostsScenario scope="budgets" layout="streamlined" state="error" />,
 };
 
 // Production costs (standalone Costs.production).

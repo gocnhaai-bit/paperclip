@@ -389,6 +389,46 @@ describe("Inbox toolbar", () => {
     container.remove();
   });
 
+  it.each([true, false])("shows task-load failures instead of inbox zero (streamlined=%s)", async (streamlined) => {
+    routerMock.location.pathname = "/inbox/mine";
+    apiMocks.experimentalSettings.mockResolvedValue({ enableStreamlinedUi: streamlined });
+    apiMocks.issuesList.mockRejectedValue(new Error("Unable to load inbox tasks."));
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+    const root = createRoot(container);
+    try {
+      await act(async () => {
+        root.render(<QueryClientProvider client={queryClient}><Inbox /></QueryClientProvider>);
+      });
+      await vi.waitFor(() => expect(container.querySelector('[role="alert"]')?.textContent).toContain("Unable to load inbox tasks."));
+      expect(container.textContent).not.toContain("Inbox zero.");
+    } finally {
+      act(() => root.unmount());
+      queryClient.clear();
+    }
+  });
+
+  it.each([true, false])("keeps cached tasks visible after a failed refresh (streamlined=%s)", async (streamlined) => {
+    routerMock.location.pathname = "/inbox/mine";
+    apiMocks.experimentalSettings.mockResolvedValue({ enableStreamlinedUi: streamlined });
+    apiMocks.issuesList.mockResolvedValue([createIssue({ title: "Previously loaded task" })]);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+    const root = createRoot(container);
+    try {
+      await act(async () => {
+        root.render(<QueryClientProvider client={queryClient}><Inbox /></QueryClientProvider>);
+      });
+      await vi.waitFor(() => expect(container.textContent).toContain("Previously loaded task"));
+      apiMocks.issuesList.mockRejectedValue(new Error("Inbox refresh failed."));
+      await act(async () => { await queryClient.refetchQueries(); });
+      await vi.waitFor(() => expect(container.querySelector('[role="alert"]')?.textContent).toContain("Inbox refresh failed."));
+      expect(container.textContent).toContain("Previously loaded task");
+      expect(container.textContent).not.toContain("Inbox zero.");
+    } finally {
+      act(() => root.unmount());
+      queryClient.clear();
+    }
+  });
+
   it("restores the legacy toolbar and issue-row presentation when Streamlined UI is off", async () => {
     routerMock.location.pathname = "/inbox/mine";
     apiMocks.experimentalSettings.mockResolvedValue({

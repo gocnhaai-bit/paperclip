@@ -260,10 +260,10 @@ export function DecisionQueuePage() {
         />
       )}
 
-      {error && <p className="text-sm text-destructive">{(error as Error).message}</p>}
+      {error && <p role="alert" className="text-sm text-destructive">{(error as Error).message}</p>}
 
       {isEmpty ? (
-        <div className="rounded-xl border border-dashed border-border py-14 text-center">
+        !error && <div className="rounded-xl border border-dashed border-border py-14 text-center">
           <p className="text-sm font-medium text-foreground">This queue is empty.</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Decisions land here when they match the queue's rules or an agent adds them.

@@ -343,12 +343,12 @@ export function Artifacts() {
         </div>
       ) : null}
 
-      {error && <p className="text-sm text-destructive">{error.message}</p>}
+      {error && <p role="alert" className="text-sm text-destructive">{error.message}</p>}
 
       {isLoading ? (
         <PageSkeleton variant="list" />
       ) : items.length === 0 ? (
-        <EmptyState icon={showGroupCards ? Layers : Package} message={emptyMessage} />
+        !error && <EmptyState icon={showGroupCards ? Layers : Package} message={emptyMessage} />
       ) : (
         <>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">

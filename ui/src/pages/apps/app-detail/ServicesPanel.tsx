@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Check, ExternalLink, Loader2, RefreshCw } from "lucide-react";
 import { Link } from "@/lib/router";
@@ -70,6 +70,7 @@ export function ServicesPanel({
         : false,
   });
 
+  const disconnectReturnFocusRef = useRef<HTMLElement | null>(null);
   const rows = composioServiceRows(servicesQuery.data);
 
   /** A toolkit connecting adds a child connection, so the app-wide lists have to be re-read. */
@@ -175,13 +176,17 @@ export function ServicesPanel({
           busySlug={busySlug}
           onConnect={(row) => startConnect.mutate(row)}
           onRecheck={(row) => recheck.mutate(row)}
-          onDisconnect={(row) => setConfirmDisconnect(row)}
+          onDisconnect={(row) => {
+            disconnectReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+            setConfirmDisconnect(row);
+          }}
         />
       )}
       {confirmDisconnect && (
         <DisconnectDialog
           row={confirmDisconnect}
           pending={disconnect.isPending}
+          returnFocusRef={disconnectReturnFocusRef}
           onCancel={() => setConfirmDisconnect(null)}
           onConfirm={() => disconnect.mutate(confirmDisconnect)}
         />
@@ -401,15 +406,25 @@ function DisconnectDialog({
   pending,
   onCancel,
   onConfirm,
+  returnFocusRef,
 }: {
   row: ComposioServiceRow;
   pending: boolean;
   onCancel: () => void;
   onConfirm: () => void;
+  returnFocusRef: React.RefObject<HTMLElement | null>;
 }) {
   return (
     <AlertDialog open onOpenChange={(open) => { if (!open) onCancel(); }}>
-      <AlertDialogContent>
+      <AlertDialogContent
+        onCloseAutoFocus={(event) => {
+          if (returnFocusRef.current?.isConnected) {
+            event.preventDefault();
+            returnFocusRef.current.focus();
+          }
+          returnFocusRef.current = null;
+        }}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>Disconnect {row.name}?</AlertDialogTitle>
           <AlertDialogDescription>

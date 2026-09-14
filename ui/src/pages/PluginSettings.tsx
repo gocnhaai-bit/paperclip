@@ -67,7 +67,7 @@ export function PluginSettings() {
   const { hideHostPaths } = useManagedSandboxOnly();
   const [activeTab, setActiveTab] = useState<"configuration" | "status">("configuration");
 
-  const { data: plugin, isLoading: pluginLoading } = useQuery({
+  const { data: plugin, isLoading: pluginLoading, error: pluginError } = useQuery({
     queryKey: queryKeys.plugins.detail(pluginId!),
     queryFn: () => pluginsApi.get(pluginId!),
     enabled: !!pluginId,
@@ -102,7 +102,7 @@ export function PluginSettings() {
     ? queryKeys.plugins.config(pluginId, selectedCompanyId)
     : ["plugins", pluginId ?? "__missing_plugin__", "companies", "__missing_company__", "config"] as const;
 
-  const { data: configData, isLoading: configLoading } = useQuery({
+  const { data: configData, isLoading: configLoading, error: configError, dataUpdatedAt: configUpdatedAt } = useQuery({
     queryKey: configQueryKey,
     queryFn: () => pluginsApi.getConfig(pluginId!, selectedCompanyId!),
     enabled: !!pluginId && !!hasConfigSchema && !!selectedCompanyId,
@@ -137,6 +137,9 @@ export function PluginSettings() {
     return <div className="p-4 text-sm text-muted-foreground">Loading plugin details...</div>;
   }
 
+  if (pluginError && !plugin) {
+    return <p role="alert" className="p-4 text-sm text-destructive">{pluginError.message}</p>;
+  }
   if (!plugin) {
     return <Navigate to="/company/settings/instance/plugins" replace />;
   }
@@ -165,6 +168,7 @@ export function PluginSettings() {
 
   return (
     <div className="max-w-6xl space-y-6">
+      {pluginError && <p role="alert" className="text-sm text-destructive">{pluginError.message}</p>}
       <div className="flex items-center gap-4">
         <Link to="/company/settings/instance/plugins">
           <Button variant="outline" size="icon" className="h-8 w-8">
@@ -254,15 +258,20 @@ export function PluginSettings() {
                   ))}
                 </div>
               ) : hasConfigSchema ? (
-                <PluginConfigForm
-                  pluginId={pluginId!}
-                  companyId={selectedCompanyId}
-                  schema={configSchema!}
-                  initialValues={configData?.configJson}
-                  isLoading={configLoading}
-                  pluginStatus={plugin.status}
-                  supportsConfigTest={(plugin as unknown as { supportsConfigTest?: boolean }).supportsConfigTest === true}
-                />
+                <>
+                  {configError && <p role="alert" className="text-sm text-destructive">{configError.message}</p>}
+                  {(!configError || configUpdatedAt > 0) && (
+                    <PluginConfigForm
+                      pluginId={pluginId!}
+                      companyId={selectedCompanyId}
+                      schema={configSchema!}
+                      initialValues={configData?.configJson}
+                      isLoading={configLoading}
+                      pluginStatus={plugin.status}
+                      supportsConfigTest={(plugin as unknown as { supportsConfigTest?: boolean }).supportsConfigTest === true}
+                    />
+                  )}
+                </>
               ) : environmentDrivers.length > 0 ? (
                 <div className="rounded-md border border-border/60 bg-muted/20 px-4 py-3 text-sm">
                   <p className="font-medium text-foreground">Configure this plugin from Settings → Environments.</p>

@@ -122,11 +122,9 @@ function folderStatus(overrides: Record<string, unknown> = {}) {
 async function renderSettings(
   container: HTMLDivElement,
   experimentalSettings: Record<string, unknown> = {},
+  queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
 ) {
   const root = createRoot(container);
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
   // The local-folders section is a host-path surface, so it stays hidden until
   // the managed-sandbox-only policy is known. Seed the policy as off; the tests
   // below are about folder rendering, not about the gate.
@@ -167,6 +165,50 @@ describe("PluginSettings", () => {
     container.remove();
     document.body.innerHTML = "";
     vi.clearAllMocks();
+  });
+
+  it.each([false, true])("keeps a configuration draft after a background read failure (empty saved config=%s)", async (emptyConfig) => {
+    mockPluginsApi.get.mockResolvedValue(basePlugin({ manifestJson: {
+      displayName: "Sample plugin", version: "0.1.0", capabilities: [],
+      instanceConfigSchema: { type: "object", properties: { label: { type: "string", title: "Label" } } },
+    } }));
+    mockPluginsApi.getConfig.mockResolvedValue(emptyConfig ? null : { configJson: { label: "Saved label" } });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const root = await renderSettings(container, {}, client);
+    try {
+      await vi.waitFor(() => expect(container.querySelector<HTMLInputElement>('input')?.value).toBe(emptyConfig ? "" : "Saved label"));
+      const input = container.querySelector<HTMLInputElement>('input')!;
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "Local draft");
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      mockPluginsApi.getConfig.mockRejectedValue(new Error("Configuration refresh unavailable."));
+      await act(async () => { await client.refetchQueries({ queryKey: queryKeys.plugins.config("plugin-1", "company-1"), exact: true }); });
+      await vi.waitFor(() => expect(container.querySelector('[role="alert"]')?.textContent).toContain("Configuration refresh unavailable."));
+      expect(container.querySelector('input')).toBe(input);
+      expect(input.value).toBe("Local draft");
+    } finally { await act(async () => root.unmount()); client.clear(); }
+  });
+
+  it("does not expose an empty editable configuration after its read fails", async () => {
+    mockPluginsApi.get.mockResolvedValue(basePlugin({ manifestJson: {
+      displayName: "Sample plugin", version: "0.1.0", capabilities: [],
+      instanceConfigSchema: { type: "object", properties: { label: { type: "string", title: "Label" } } },
+    } }));
+    mockPluginsApi.getConfig.mockRejectedValue(new Error("Configuration unavailable."));
+    const root = await renderSettings(container);
+    try {
+      await vi.waitFor(() => expect(container.querySelector('[role="alert"]')?.textContent).toContain("Configuration unavailable."));
+      expect(container.querySelector('input')).toBeNull();
+    } finally { await act(async () => root.unmount()); }
+  });
+
+  it("announces a failed plugin read instead of silently redirecting", async () => {
+    mockPluginsApi.get.mockRejectedValue(new Error("Plugin details unavailable."));
+    const root = await renderSettings(container);
+    try {
+      await vi.waitFor(() => expect(container.querySelector('[role="alert"]')?.textContent).toContain("Plugin details unavailable."));
+    } finally { await act(async () => root.unmount()); }
   });
 
   it("routes environment-provider plugins to instance environments when they have no instance config", async () => {

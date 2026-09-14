@@ -1343,7 +1343,7 @@ export function CompanyEnvironments({ mode = "list" }: CompanyEnvironmentsProps)
   const environmentsEnabled = experimentalSettings?.enableEnvironments === true;
   const managedSandboxOnly = experimentalSettings?.enableManagedSandboxOnly === true;
 
-  const { data: environments } = useQuery({
+  const { data: environments, error: environmentsError, isLoading: environmentsLoading } = useQuery({
     queryKey: selectedCompanyId ? queryKeys.environments.list(selectedCompanyId) : ["environments", "none"],
     queryFn: () => environmentsApi.list(selectedCompanyId!),
     enabled: Boolean(selectedCompanyId) && environmentsEnabled,
@@ -1955,6 +1955,8 @@ export function CompanyEnvironments({ mode = "list" }: CompanyEnvironmentsProps)
 
   return (
     <div className="max-w-6xl space-y-6" data-testid="instance-settings-environments-section">
+      {environmentsError && <p role="alert" className="text-sm text-destructive">{environmentsError.message}</p>}
+      {environmentsLoading && <p className="text-sm text-muted-foreground">Loading environments…</p>}
       {!isEnvironmentFormPage ? (
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1967,7 +1969,7 @@ export function CompanyEnvironments({ mode = "list" }: CompanyEnvironmentsProps)
                 value={instanceDefaultEnvironmentId}
                 onChange={(event) =>
                   defaultEnvironmentMutation.mutate(event.target.value || null)}
-                disabled={defaultEnvironmentMutation.isPending}
+                disabled={defaultEnvironmentMutation.isPending || environmentsLoading || Boolean(environmentsError)}
               >
                 {managedSandboxOnly ? (
                   // Managed-sandbox-only instances never execute locally, so

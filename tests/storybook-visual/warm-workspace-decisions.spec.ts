@@ -20,12 +20,21 @@ for (const [width, height] of [[1440, 900], [1280, 800], [768, 1024], [390, 844]
     }
   }
 }
+test("queue read failure is not an empty queue", async ({ page }) => {
+  await page.goto("/iframe.html?id=pages-decisions-desk--full-shell-queue-error&viewMode=story");
+  await expect(page.locator("main").getByRole("alert")).toContainText("Sample decisions could not be loaded.");
+  await expect(page.getByText("This queue is empty.", { exact: true })).toHaveCount(0);
+});
+
 for (const state of ["empty", "loading", "error"]) {
   test(`Decisions ${state}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/iframe.html?id=pages-decisions-desk--full-shell-${state}&viewMode=story&globals=theme:dark`);
     if (state === "empty") await expect(page.getByText("You're all caught up", { exact: true })).toBeVisible();
-    else if (state === "error") await expect(page.getByText("Sample decisions could not be loaded.", { exact: true })).toBeVisible();
+    else if (state === "error") {
+      await expect(page.getByText("Sample decisions could not be loaded.", { exact: true })).toBeVisible();
+      await expect(page.getByText("You're all caught up", { exact: true })).toHaveCount(0);
+    }
     else await expect(page.locator('main [data-slot="skeleton"]').first()).toBeVisible();
   });
 }

@@ -1,4 +1,6 @@
-import type { RoutineListItem } from "@paperclipai/shared";
+import type { RoutineDetail as RoutineDetailData, RoutineListItem, RoutineTrigger, RoutineRunSummary } from "@paperclipai/shared";
+import { RoutineDetail } from "@/pages/RoutineDetail";
+import { RoutineDetail as ProductionRoutineDetail } from "@/pages/RoutineDetail.production";
 import { useEffect, useState } from "react";
 import { Routes, Route, useLocation, useNavigate } from "@/lib/router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -39,14 +41,35 @@ const SAMPLE_ROUTINES: RoutineListItem[] = [
   triggers: [], lastRun: null, activeIssue: null,
 }));
 
+const SAMPLE_TRIGGER: RoutineTrigger = {
+  id: "trigger-weekly", companyId: ROUTINES_COMPANY_ID, routineId: "routine-digest", kind: "schedule", label: "Weekly schedule",
+  enabled: true, cronExpression: "0 9 * * 1", timezone: "Asia/Ho_Chi_Minh", nextRunAt: new Date("2026-09-21T02:00:00Z"),
+  lastFiredAt: null, publicId: null, secretId: null, signingMode: null, replayWindowSec: null, lastRotatedAt: null, lastResult: null,
+  createdByAgentId: null, createdByUserId: "user-board", updatedByAgentId: null, updatedByUserId: "user-board",
+  createdAt: new Date("2026-09-14T02:00:00Z"), updatedAt: new Date("2026-09-14T02:00:00Z"),
+};
+const SAMPLE_RUN: RoutineRunSummary = {
+  id: "routine-run-preview", companyId: ROUTINES_COMPANY_ID, routineId: "routine-digest", triggerId: SAMPLE_TRIGGER.id,
+  source: "schedule", status: "failed", triggeredAt: SAMPLE_TRIGGER.createdAt, idempotencyKey: null, triggerPayload: null,
+  dispatchFingerprint: null, linkedIssueId: null, coalescedIntoRunId: null, failureReason: "Preview dispatch unavailable",
+  completedAt: SAMPLE_TRIGGER.createdAt, createdAt: SAMPLE_TRIGGER.createdAt, updatedAt: SAMPLE_TRIGGER.createdAt,
+  linkedIssue: null, trigger: { id: SAMPLE_TRIGGER.id, kind: SAMPLE_TRIGGER.kind, label: SAMPLE_TRIGGER.label },
+};
+
 type RoutinesScenarioState = "populated" | "empty" | "loading" | "error";
 
 function RoutinesScenario({
   streamlined = true,
   state = "populated",
+  detail = false,
+  populatedHistory = false,
+  section = "",
 }: {
   streamlined?: boolean;
   state?: RoutinesScenarioState;
+  detail?: boolean;
+  populatedHistory?: boolean;
+  section?: "" | "triggers" | "runs";
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -56,7 +79,7 @@ function RoutinesScenario({
   const [initialPath] = useState(location.pathname);
 
   const routePrefix = "/PAP/routines";
-  const target = routePrefix;
+  const target = `${routePrefix}${detail ? `/routine-digest${section ? `/${section}` : ""}` : ""}`;
 
   useEffect(() => {
     const originalFetch = window.fetch;
@@ -92,6 +115,22 @@ function RoutinesScenario({
         if (state === "empty") return Response.json([]);
         return Response.json(SAMPLE_ROUTINES);
       }
+
+      const detailMatch = url.pathname.match(/^\/api\/routines\/([^/]+)(?:\/(.*))?$/);
+      if (detailMatch) {
+        const routine = SAMPLE_ROUTINES.find((item) => item.id === detailMatch[1]);
+        if (!routine) return Response.json({ error: "Sample routine not found." }, { status: 404 });
+        if (detailMatch[2] === "runs") return Response.json(populatedHistory ? [SAMPLE_RUN] : []);
+        if (detailMatch[2] === "revisions") return Response.json([]);
+        if (!detailMatch[2]) {
+          if (state === "loading") return new Promise<Response>(() => {});
+          if (state === "error") return Response.json({ error: "Sample routine could not be loaded." }, { status: 503 });
+          const result: RoutineDetailData = { ...routine, triggers: populatedHistory ? [SAMPLE_TRIGGER] : [], recentRuns: populatedHistory ? [SAMPLE_RUN] : [], activeIssue: null,
+            project: null, assignee: null, parentIssue: null, description: "Prepare the weekly operational digest from completed work." };
+          return Response.json(result);
+        }
+      }
+      if (url.pathname === `/api/companies/${ROUTINES_COMPANY_ID}/activity` && url.searchParams.get("entityType") === "routine") return Response.json([]);
 
       // Folders for routines; shape: { folders: [...], allCount, unfiledCount }.
       const companyFoldersMatch = url.pathname.match(/^\/api\/companies\/([^/]+)\/folders$/);
@@ -143,7 +182,7 @@ function RoutinesScenario({
         queryClient.setQueryData(settingsKey, previousSettings);
       }
     };
-  }, [queryClient, state, streamlined]);
+  }, [queryClient, state, streamlined, populatedHistory]);
 
   useEffect(() => {
     if (selectedCompanyId !== ROUTINES_COMPANY_ID) setSelectedCompanyId(ROUTINES_COMPANY_ID);
@@ -162,6 +201,7 @@ function RoutinesScenario({
       <Routes>
         <Route path="/:companyPrefix" element={<LayoutComponent />}>
           <Route path="routines" element={streamlined ? <Routines /> : <ProductionRoutines />} />
+          <Route path="routines/:routineId/:section?" element={streamlined ? <RoutineDetail /> : <ProductionRoutineDetail />} />
           <Route path="*" element={<p>Preview navigation: {location.pathname}</p>} />
         </Route>
       </Routes>
@@ -176,6 +216,15 @@ const meta = {
 } satisfies Meta<typeof RoutinesScenario>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+export const TriggersPopulatedProduction: Story = { args: { detail: true, populatedHistory: true, streamlined: false, section: "triggers" } };
+export const RunsPopulatedProduction: Story = { args: { detail: true, populatedHistory: true, streamlined: false, section: "runs" } };
+export const DetailPopulated: Story = { args: { detail: true, populatedHistory: true } };
+export const DetailPopulatedProduction: Story = { args: { detail: true, populatedHistory: true, streamlined: false } };
+export const Detail: Story = { args: { detail: true } };
+export const DetailProduction: Story = { args: { detail: true, streamlined: false } };
+export const DetailLoading: Story = { args: { detail: true, state: "loading" } };
+export const DetailError: Story = { args: { detail: true, state: "error" } };
 
 export const Populated: Story = {
   args: { streamlined: true, state: "populated" },

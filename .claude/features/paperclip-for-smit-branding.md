@@ -76,13 +76,35 @@ Goals previews in `Pages/Warm Workspace/Goals` mount actual Goals/GoalDetail und
 
 ApprovalDetail now renders its load-query error as an alert before the missing-record fallback, retaining cached detail content on background-refetch failure. Previously any503 load failure appeared as “Approval not found”; a fixture browser regression reproduces that distinction. Approval/reject/comment handlers and permission semantics are unchanged.
 
+Approvals list read failures also suppress the “No pending approvals” empty state and announce the load error, while retaining cached cards and existing actions.
+
 Approvals full-shell previews mount real Approvals/ApprovalDetail routes under both layouts, using existing approval samples plus local comments/linked-task data. Pending and revision-requested detail branches, populated/empty/loading/error states are exposed without approving/rejecting live records. Mutations fail403. Browser validation, filtering fidelity and layout disposition remain checkpointed separately.
+
+Audit Timeline now has a populated sibling-route preview using the existing global timeline sample. This supports layout/control checks, not live aggregation or date-range correctness.
+
+The Audit preview additionally mounts AuditHub's Runs route with contract-typed local succeeded/failed run samples and dedicated loading/empty/error states. Agent filtering is scoped in the fixture; status filtering uses the actual AuditRuns component. No run is created or invoked.
+
+The Audit preview now mounts Activity, Costs and Budgets together as actual sibling routes, so switching AuditHub tabs no longer falls into a navigation placeholder. Dedicated Budgets states reuse the existing budget policy contract; no policy edits or incident resolutions are performed.
+
+Decisions desk and queue load failures now use an alert and do not render “all caught up” or “queue is empty” when the feed failed. Cached nonempty content remains visible; successful empty feeds retain their normal empty states. No decision handlers or query contracts changed.
 
 Decisions Desk adds full-shell read-only route scenarios for WhatNeedsMe and DecisionQueuePage using the existing attention/queue samples. They expose populated/empty/loading/error and production-layout desk previews, reject mutations, and filter queue membership locally. These extend rather than relabel the prior page-only and card demos; full filtering/action/variant coverage remains separately tracked.
 
+Inbox read failures in both streamlined and legacy modes now surface an alert and suppress the misleading empty-state message. The active task query, shared issue context, approvals, join requests, run history, visible company alerts and active search supplement contribute to the error state; cached rows remain rendered. BlockedInboxView retains its own query/error handling. Existing unauthorized join-request handling and all mutation/permission contracts are unchanged.
+
 Inbox full-shell stories mount the actual Inbox mode switch and five streamlined tabs plus selected legacy tabs. Scoped sample issues support title/identifier search and status filtering; this is not proof of server-side personal-inbox membership. Existing agents/projects are reused rather than replaced with empty identities. Blocked attention is supplied explicitly; unknown scoped reads fail501 and mutations403. Audit/Costs also adds actual page-owner previews in both layouts with four states; finance Date fields were corrected after primary-tree typecheck rejected the delegated draft. Nested runs/budgets/timeline remain outside that initial preview slice.
 
+The shared RunButton now derives its accessible name from the existing label prop, so mobile's icon-only rendering remains named. PauseResumeButton likewise retains explicit Pause/Resume names when its text is hidden. No action or visible layout changes.
+
+The shared RoutineRunVariablesDialog captures its opening focus and restores it on close if still connected, since its callers open it without a DialogTrigger. Browser reproduction on RoutineDetail showed Cancel dropping focus; the fix is shared by routine list/detail and execution-workspace callers without changing submit behavior.
+
+Routine detail previews additionally expose a typed weekly schedule trigger and a failed dispatch-history record in both page variants. They are local metadata fixtures only; no schedule, routine or run is created in the host.
+
+Routine list previews now also mount actual RoutineDetail/RoutineDetail.production with typed detail responses, empty runs/revisions and local description. List-to-detail navigation and configuration inspection stay read-only; no trigger is created or routine run invoked.
+
 Routines' primary-tree follow-up explicitly imports the production page, matches folders by pathname (query parsed separately), and uses full typed RoutineListItem samples with no run history. A visible routine-title assertion replaces the earlier generic first-link check, which could pass without proving populated routine content.
+
+Artifacts load failures now announce an alert without also claiming the library/stack is empty. Cached artifact cards remain rendered after background failures; successful empty states are unchanged.
 
 Artifacts now has actual full-shell route previews using existing document samples and the locally served text attachment, with query/type and single-task stack filtering. Routines previews mount both Routines and Routines.production explicitly; the delegated draft's wrong folder endpoint and missing production owner were corrected before integration. Both families expose loading/empty/error rather than relabeling component demos; browser results remain separate.
 
@@ -90,7 +112,65 @@ Auth/NotFound previews mount actual AuthPage outside the company shell, and boar
 
 Search's existing story family now additionally mounts the actual Search route in Layout for results/empty/loading/error, reusing the existing search response examples. Local term filtering is supported; operator syntax, permissions, date/type facets and live ranking are not certified by this preview.
 
+CompanyAccess edit/remove dialogs now remember the clicked opening button and return focus on close when it is still connected. This fixes the reproduced edit-cancel focus loss without changing membership mutations or removal guards.
+
+Members previews now mount actual CompanyAccess under the existing company.members gate, with typed local membership data and populated/empty/loading/error/forbidden responses. A hidden-page scenario uses the real health.hiddenSettings contract to exercise the redirect rather than bypassing the gate. Editing may be opened and cancelled locally; all API mutations remain blocked. Agent Studio stays plugin-owned and is distinct from the host's Skill Studio.
+
+Secrets previews mount the actual gated page with existing sample metadata only; user-secret definitions, personal entries and proposals are explicitly empty fixtures. No secret value is read, entered, saved or exported. Loading/empty/error scenarios apply to the company metadata list; a transient-failure scenario exercises the actual Retry action returning the existing metadata sample.
+
+Environments list reads now announce loading/errors and disable the Default selector while the list is loading or failed, preventing changes based on an incomplete option list. Cached rows and existing environment actions remain mounted; no default flag, provider or execution behavior changed.
+
+Native PluginSettings previews use a typed disabled sample manifest with no worker loaded. They exercise Configuration/Status navigation, detail503 and config403 at the real host route; no plugin integration, configuration save or secret value is involved.
+
+PluginSettings configuration read failures do not expose an empty editable form; cached configuration remains mounted with an alert, including a successful null response (no saved config yet) followed by a locally entered draft. This prevents an unavailable saved configuration from appearing to be a new blank configuration.
+
+PluginSettings detail reads now announce failure instead of silently redirecting to the manager; cached detail remains mounted with an alert. This is host management UI only, not integration with the Agent Studio plugin, which remains deferred until host completion.
+
+AdapterManager now announces adapter-list read failures rather than silently rendering empty sections; cached adapter rows remain visible with an alert after background failure. Install/toggle/reload/remove behavior is unchanged. Nine browser checks verify initial503 and install-dialog local-path inspection/Cancel/focus at four sizes/themes, without selecting a filesystem path or installing anything.
+
+Plugin Manager preview mounts the native instance.plugins gate and actual page with isolated empty/loading/error responses. Install dialog is inspected and cancelled only; no package installation, plugin enable/disable, runtime or Agent Studio source changes. Browser checks pass for install Cancel/focus across four viewports/themes and loading/error. AdapterManager gated populated/loading/error previews are being added with existing local adapter metadata; no external registry or runtime action is invoked.
+
+InstanceAccess previews now mount the actual instance.access gate with typed sample users/membership metadata, search filtering and empty/loading/403/503 states. No admin promotion or organization-access save is submitted;12/12 browser checks pass for the encoded search/content/state assertions.
+
+The actual Experimental settings page is also previewed behind its existing gate with read-only local flags. Inspecting its controls does not enable any experimental feature in a real instance.
+
 CompanySettings and ProfileSettings now have read-only full-shell previews, retaining the actual HiddenSettingsPageGate for profile. Only the selected populated routes are represented; other settings/gates and saving remain unverified.
+
+Rejected version restores now use the existing mutation-error feedback, including policy-denial remediation, rather than failing silently. The restore write sequence and server authorization remain unchanged; regression uses a mocked denied first file write and asserts no version creation.
+
+File selection, file draft/baseline and saved-input draft are owned by StudioShell, so switching between tabs and desktop panels on resize no longer discards edits. File loading initializes a clean draft only; a dirty draft survives remount/refetch. The shell is keyed by company/skill to prevent carrying drafts into another skill. Successful file saves also update that file's query cache, so a later responsive remount reads the saved content rather than an older cached copy. No storage or mutation API added.
+
+Studio selects tabs below its existing900px threshold using the actual container width via ResizeObserver, not the browser width. At1280px with sidebars, the available editor width was about737px; the three-pane minimum sizes forced Input down to40px and hid its filename/editor. The container-based decision keeps all three workflows reachable without changing desktop pane sizing/storage.
+
+The saved Studio header wraps its existing controls when space is constrained. A390px pointer test reproduced Version history outside the viewport; keyboard-only opening had not proved pointer access. No controls are removed or renamed.
+
+Saved-input query failures also announce an inline alert while retaining the mounted input editor and cached input list. No test-input or run mutation contract changes.
+
+Studio run and version histories announce read failures without claiming there are no runs/versions. Cached rows remain visible; history selection, restore and run actions are unchanged. The container/header/error follow-up passes85/85 catalog browser checks on one frozen build, including saved-input editing/Revert, file draft retention across tabs and pointer-accessible version history. Denied file saves retain drafts and explain policy in isolated unit tests; no live mutation is performed.
+
+The Studio version-history sheet and Edit-a-copy dialog capture their opening focus and restore the connected opener on close. Browser verification reproduced Escape losing focus; restoration does not alter version selection or restore handlers.
+
+Confirmed file switches clear the discarded file draft before loading the next path, including when that read fails; cancelled switches retain the draft. Skill file reads also announce failures inline. Until a file has loaded, its editor is not rendered and Save is disabled, so loading/failure cannot look like an editable blank file or expose the previous file's draft under a new path. Cached file content and its local draft stay mounted after a failed background refresh.
+
+Mobile Skill Studio now keeps the Skill and Input tab panels mounted but hidden while inactive, preserving local editor drafts when switching tabs. Runs retains its existing mount/poll lifecycle. A focused regression reproduced a lost skill draft before this change; full-shell saved-editor fixtures now use typed detail/file/input/version contracts. Browser verification covers file navigation, draft/discard, mobile tab retention, version diff/Escape/focus and read-only fork Cancel/focus;49/49 combined catalog checks and20/20 Studio/fork unit tests pass at this checkpoint. No skill is saved or run.
+
+SkillStudio now preserves the server read-error message rather than labeling every failed request “Skill not found.” Cached editor content remains mounted on background failure, with an alert; creation/test/permission contracts are unchanged.
+
+Host Skill Studio landing/new and saved-editor routes mount the actual SkillStudio component inside both layout variants. This is unrelated to the external Agent Studio plugin. Creation/testing APIs remain blocked; saved detail, files, input and version reads use local typed fixtures.
+
+The profile wizard's fixed action bar clears the mobile navigation using the existing bottom-nav offset token below md; desktop remains bottom-aligned. Browser pointer clicks reproduced Cancel being intercepted by navigation at390px. No wizard save/permission behavior changes.
+
+Native Advanced profiles and new-profile wizard now mount behind their existing admin gate with a typed local board-access fixture. Cancel stays in fixture routes; no profile is saved or assigned. Detailed profile/tool permissions are not inferred from this entry coverage.
+
+New gateway dialog now captures/restores its connected opener on close; the dialog primitive focuses the first input instead of a competing native autoFocus. Cancel focus loss was reproduced in the actual GatewaysList preview.
+
+Services disconnect confirmation now restores its connected opening control on Cancel/close. A pointer-driven browser regression reproduced lost focus; no disconnect handler or authorization change.
+
+Apps Services previews now mount actual AppDetail/ServicesPanel with typed local connected-service metadata, empty/error responses and a disconnect-confirmation Cancel check. No service is connected/disconnected. Gateway empty/error entry previews use actual GatewaysList. These extend host coverage, not Agent Studio integration.
+
+Apps previews also mount actual AppDetail error, AppsReview empty/error and AppsConnect entry under the host layout. Browser checks cover error→Back to connectors, review failure versus empty, and connect-form search/no-match recovery without choosing OAuth or submitting connection data. Populated connection metadata with configuration-denied capabilities is also verified across four sizes/themes; tool catalog/grants are empty, so populated actions/services remain unverified.
+
+AppDetail connection read failures now announce the error instead of claiming the app is missing. Cached connection content stays rendered with an alert on background failure; connection, OAuth and permission handlers are unchanged.
 
 Catalog previews mount real Browse and both CompanySkills variants under the corresponding full shell. Skills reuse the existing agent-settings library sample; unrepresented skill detail endpoints fail501. Apps reuse the global gallery sample. This slice represents catalog entry pages only, not connection/OAuth/gateway or Skill Studio detail acceptance.
 

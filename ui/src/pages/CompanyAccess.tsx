@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   HUMAN_COMPANY_MEMBERSHIP_ROLE_LABELS,
@@ -61,6 +61,7 @@ export function CompanyAccess() {
       { replace: true },
     );
   };
+  const dialogReturnFocusRef = useRef<HTMLButtonElement | null>(null);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [reassignmentTarget, setReassignmentTarget] = useState<string>("__unassigned");
@@ -380,7 +381,10 @@ export function CompanyAccess() {
                     </td>
                     <td className="px-3 py-3 text-right">
                       <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="outline" onClick={() => setEditingMemberId(member.id)}>
+                        <Button size="sm" variant="outline" onClick={(event) => {
+                          dialogReturnFocusRef.current = event.currentTarget;
+                          setEditingMemberId(member.id);
+                        }}>
                           Edit
                         </Button>
                         <span
@@ -390,7 +394,10 @@ export function CompanyAccess() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => setRemovingMemberId(member.id)}
+                            onClick={(event) => {
+                              dialogReturnFocusRef.current = event.currentTarget;
+                              setRemovingMemberId(member.id);
+                            }}
                             disabled={!canArchive}
                             title={!canArchive ? removalReason ?? undefined : undefined}
                           >
@@ -409,7 +416,13 @@ export function CompanyAccess() {
       </section>
 
       <Dialog open={!!editingMember} onOpenChange={(open) => !open && setEditingMemberId(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent onCloseAutoFocus={(event) => {
+          if (dialogReturnFocusRef.current?.isConnected) {
+            event.preventDefault();
+            dialogReturnFocusRef.current.focus();
+          }
+          dialogReturnFocusRef.current = null;
+        }} className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit member</DialogTitle>
             <DialogDescription>
@@ -475,7 +488,13 @@ export function CompanyAccess() {
       </Dialog>
 
       <Dialog open={!!removingMember} onOpenChange={(open) => !open && setRemovingMemberId(null)}>
-        <DialogContent className="max-w-xl">
+        <DialogContent onCloseAutoFocus={(event) => {
+          if (dialogReturnFocusRef.current?.isConnected) {
+            event.preventDefault();
+            dialogReturnFocusRef.current.focus();
+          }
+          dialogReturnFocusRef.current = null;
+        }} className="max-w-xl">
           <DialogHeader>
             <DialogTitle>Remove member</DialogTitle>
             <DialogDescription>

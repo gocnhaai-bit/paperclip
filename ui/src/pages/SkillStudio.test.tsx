@@ -10,6 +10,7 @@ import type {
   CompanySkillListItem,
 } from "@paperclipai/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError } from "@/api/client";
 import { SkillStudio } from "./SkillStudio";
 
 const routeState = vi.hoisted(() => ({
@@ -20,6 +21,10 @@ const routeState = vi.hoisted(() => ({
 
 const mockNavigate = vi.hoisted(() => vi.fn());
 const mockSetBreadcrumbs = vi.hoisted(() => vi.fn());
+const mockPushToast = vi.hoisted(() => vi.fn());
+vi.mock("@/context/ToastContext", () => ({
+  useOptionalToastActions: () => ({ pushToast: mockPushToast }),
+}));
 
 const mockCompanySkillsApi = vi.hoisted(() => ({
   list: vi.fn(),
@@ -167,13 +172,12 @@ async function waitFor(assertion: () => void) {
   await vi.waitFor(assertion);
 }
 
-async function renderStudio() {
+async function renderStudio(queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+})) {
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
 
   await act(async () => {
     root?.render(
@@ -260,6 +264,11 @@ function buttonsNamed(node: ParentNode, name: string) {
 }
 
 beforeEach(() => {
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(() => window.innerWidth);
+  vi.stubGlobal("ResizeObserver", class {
+    observe() {}
+    disconnect() {}
+  });
   routeState.pathname = "/skills/studio/new";
   routeState.search = "";
   routeState.skillId = "new";
@@ -315,6 +324,8 @@ afterEach(() => {
   container?.remove();
   container = null;
   document.body.innerHTML = "";
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   vi.clearAllMocks();
 });
 
@@ -565,6 +576,195 @@ describe("SkillStudio editor frontmatter", () => {
     routeState.pathname = "/skills/studio/source-skill";
     routeState.search = "";
     routeState.skillId = "source-skill";
+  });
+
+  it("reports a rejected version restore without creating a version", async () => {
+    mockCompanySkillsApi.versions.mockResolvedValue([{
+      id: "version-restore", revisionNumber: 1, label: "Restore candidate", createdAt: new Date("2026-09-14"),
+      fileInventory: [{ path: "SKILL.md", kind: "skill", content: "# Previous skill\n" }],
+    }]);
+    mockCompanySkillsApi.updateFile.mockRejectedValue(new ApiError("Restore denied", 403, { code: "skill_policy_denied" }));
+    const node = await renderStudio();
+    await waitFor(() => expect(buttonsNamed(node, "Version history")[0]).toBeTruthy());
+    await click(buttonsNamed(node, "Version history")[0]);
+    await waitFor(() => expect(buttonsNamed(document, "Restore as v2")[0]).toBeTruthy());
+    await click(buttonsNamed(document, "Restore as v2")[0]);
+    await waitFor(() => expect(mockPushToast).toHaveBeenCalledWith(expect.objectContaining({
+      tone: "warn", title: "This action is restricted by your organization policy.",
+    })));
+    expect(mockCompanySkillsApi.createVersion).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain("Restore candidate");
+  });
+
+  it("updates the file cache after a successful save", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    mockCompanySkillsApi.updateFile.mockImplementation((_companyId, _skillId, path, content) => {
+      const updated = { skillId: "source-skill", path, content, markdown: true, editable: true, kind: "skill", language: "markdown" };
+      mockCompanySkillsApi.file.mockResolvedValue(updated);
+      return Promise.resolve(updated);
+    });
+    const node = await renderStudio(client);
+    await waitFor(() => expect(node.querySelector<HTMLTextAreaElement>('[data-testid="markdown-editor"]')?.value).toContain("# Demo Skill"));
+    await keyDown(node.querySelector('[data-testid="markdown-editor"]')!, "E");
+    await waitFor(() => expect(buttonsNamed(node, "Save").some((button) => !button.disabled)).toBe(true));
+    await click(buttonsNamed(node, "Save").find((button) => !button.disabled)!);
+    await waitFor(() => expect(client.getQueryData<{ content: string }>(["company-skills", "company-1", "source-skill", "file", "SKILL.md"])?.content).toContain("Edited body"));
+    expect(node.textContent).not.toContain("Unsaved edits");
+  });
+
+  it("clears editor state when opening a different skill", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const node = await renderStudio(client);
+    await waitFor(() => expect(node.querySelector<HTMLTextAreaElement>('[data-testid="markdown-editor"]')?.value).toContain("# Demo Skill"));
+    await keyDown(node.querySelector('[data-testid="markdown-editor"]')!, "E");
+    await waitFor(() => expect(node.textContent).toContain("Unsaved edits"));
+    routeState.skillId = "other-skill";
+    routeState.pathname = "/skills/studio/other-skill";
+    mockCompanySkillsApi.detail.mockResolvedValue(makeSkill({ id: "other-skill", name: "Other skill" }));
+    mockCompanySkillsApi.file.mockResolvedValue({ path: "SKILL.md", content: "# Other skill\n", markdown: true, editable: true });
+    await act(() => {
+      root!.render(<QueryClientProvider client={client}><SkillStudio /></QueryClientProvider>);
+    });
+    await waitFor(() => expect(node.querySelector<HTMLTextAreaElement>('[data-testid="markdown-editor"]')?.value).toContain("# Other skill"));
+    expect(node.textContent).not.toContain("Unsaved edits");
+    expect(node.querySelector<HTMLTextAreaElement>('[data-testid="markdown-editor"]')?.value).not.toContain("Edited body");
+    expect(mockCompanySkillsApi.updateFile).not.toHaveBeenCalled();
+  });
+
+  it("uses tabs when sidebars leave insufficient width for three panes", async () => {
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(737);
+    const node = await renderStudio();
+    await waitFor(() => expect(node.querySelector('[role="tab"]')?.textContent).toBe("Skill"));
+    expect(Array.from(node.querySelector('[role="tablist"]')!.querySelectorAll('[role="tab"]')).map((tab) => tab.textContent)).toEqual(["Skill", "Input", "Runs"]);
+  });
+
+  it("retains the file draft and explains an explicit policy denial", async () => {
+    mockCompanySkillsApi.updateFile.mockRejectedValue(new ApiError("Denied", 403, {
+      code: "skill_policy_denied", reason: "explicit_rule",
+    }));
+    const node = await renderStudio();
+    await waitFor(() => expect(node.querySelector<HTMLTextAreaElement>('[data-testid="markdown-editor"]')?.value).toContain("# Demo Skill"));
+    await keyDown(node.querySelector('[data-testid="markdown-editor"]')!, "E");
+    await waitFor(() => expect(buttonsNamed(node, "Save").some((button) => !button.disabled)).toBe(true));
+    await click(buttonsNamed(node, "Save").find((button) => !button.disabled)!);
+    await waitFor(() => expect(mockPushToast).toHaveBeenCalledWith(expect.objectContaining({
+      tone: "warn", title: "This action is restricted by your organization policy.",
+      body: "An organization administrator can change the skill policy to allow this.",
+    })));
+    expect(node.querySelector<HTMLTextAreaElement>('[data-testid="markdown-editor"]')?.value).toContain("Edited body");
+    expect(node.textContent).toContain("Unsaved edits");
+  });
+
+  it("announces saved input read failures", async () => {
+    mockCompanySkillsApi.testInputs.mockRejectedValue(new Error("Saved inputs unavailable."));
+    const node = await renderStudio();
+    await waitFor(() => expect(node.querySelector('[role="alert"]')?.textContent).toContain("Saved inputs unavailable."));
+    expect(mockCompanySkillsApi.createTestRun).not.toHaveBeenCalled();
+  });
+
+  it("does not claim empty run history when the request fails", async () => {
+    mockCompanySkillsApi.testRuns.mockRejectedValue(new Error("Run history unavailable."));
+    const node = await renderStudio();
+    await waitFor(() => expect(node.querySelector('[role="alert"]')?.textContent).toContain("Run history unavailable."));
+    expect(node.textContent).not.toContain("No test runs yet.");
+  });
+
+  it("does not claim empty version history when the request fails", async () => {
+    mockCompanySkillsApi.versions.mockRejectedValue(new Error("Version history unavailable."));
+    const node = await renderStudio();
+    await waitFor(() => expect(buttonsNamed(node, "Version history")[0]).toBeTruthy());
+    await click(buttonsNamed(node, "Version history")[0]);
+    await waitFor(() => expect(document.querySelector('[role="alert"]')?.textContent).toContain("Version history unavailable."));
+    expect(document.body.textContent).not.toContain("No versions yet.");
+  });
+
+  it("keeps cached version rows after a failed refresh", async () => {
+    mockCompanySkillsApi.versions.mockResolvedValue([{
+      id: "version-cached", revisionNumber: 1, label: "Saved review", createdAt: new Date("2026-09-14"), fileInventory: [],
+    }]);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const node = await renderStudio(client);
+    await waitFor(() => expect(buttonsNamed(node, "Version history")[0]).toBeTruthy());
+    await click(buttonsNamed(node, "Version history")[0]);
+    await waitFor(() => expect(document.body.textContent).toContain("Saved review"));
+    mockCompanySkillsApi.versions.mockRejectedValue(new Error("Versions refresh unavailable."));
+    await act(async () => { await client.refetchQueries({ queryKey: ["company-skills", "company-1", "source-skill", "versions"], exact: true }); });
+    await waitFor(() => expect(document.querySelector('[role="alert"]')?.textContent).toContain("Versions refresh unavailable."));
+    expect(document.body.textContent).toContain("Saved review");
+    expect(document.body.textContent).not.toContain("No versions yet.");
+  });
+
+  it("clears discarded edits when the next file fails to load", async () => {
+    mockCompanySkillsApi.detail.mockResolvedValue(makeSkill({
+      fileInventory: [{ path: "SKILL.md", kind: "skill" }, { path: "notes.txt", kind: "other" }],
+    }));
+    mockCompanySkillsApi.file.mockImplementation((_companyId, _skillId, path) => path === "notes.txt"
+      ? Promise.reject(new Error("Notes unavailable."))
+      : Promise.resolve({ path, content: "# Demo Skill\n", markdown: true, editable: true }));
+    const node = await renderStudio();
+    await waitFor(() => expect(node.querySelector<HTMLTextAreaElement>('[data-testid="markdown-editor"]')?.value).toContain("# Demo Skill"));
+    await keyDown(node.querySelector('[data-testid="markdown-editor"]')!, "E");
+    await waitFor(() => expect(node.textContent).toContain("Unsaved edits"));
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    try {
+      const file = Array.from(node.querySelectorAll<HTMLElement>('[role="treeitem"]')).find((entry) => entry.textContent?.includes("notes.txt"))!;
+      await act(() => { file.click(); });
+      await waitFor(() => expect(node.textContent).toContain("Notes unavailable."));
+      expect(node.textContent).not.toContain("Unsaved edits");
+      expect(mockCompanySkillsApi.updateFile).not.toHaveBeenCalled();
+    } finally { confirm.mockRestore(); }
+  });
+
+  it("announces a file read failure without presenting an editable blank file", async () => {
+    mockCompanySkillsApi.file.mockRejectedValue(new Error("File could not be loaded."));
+    const node = await renderStudio();
+    await waitFor(() => expect(node.querySelector('[role="alert"]')?.textContent).toContain("File could not be loaded."));
+    expect(node.querySelector('[data-testid="markdown-editor"]')).toBeNull();
+    expect(buttonsNamed(node, "Save")[0]?.disabled).toBe(true);
+  });
+
+  it("retains an edited file after detail and file refresh failures", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+    const node = await renderStudio(client);
+    let editor: HTMLTextAreaElement | null = null;
+    await waitFor(() => {
+      editor = node.querySelector('[data-testid="markdown-editor"]');
+      expect(editor?.value).toContain("# Demo Skill");
+    });
+    await keyDown(editor!, "E");
+    mockCompanySkillsApi.detail.mockRejectedValue(new Error("Skill refresh unavailable."));
+    mockCompanySkillsApi.file.mockRejectedValue(new Error("File refresh unavailable."));
+    await act(async () => { await client.refetchQueries({ queryKey: ["company-skills", "company-1", "source-skill"] }); });
+    await waitFor(() => expect(node.querySelector('[role="alert"]')?.textContent).toContain("Skill refresh unavailable."));
+    expect(node.querySelector('[data-testid="markdown-editor"]')).toBe(editor);
+    expect(node.querySelector<HTMLTextAreaElement>('[data-testid="markdown-editor"]')?.value).toContain("Edited body");
+    expect(node.textContent).toContain("Unsaved edits");
+    expect(mockCompanySkillsApi.updateFile).not.toHaveBeenCalled();
+  });
+
+  it("keeps the skill draft when switching mobile panes", async () => {
+    const previousWidth = window.innerWidth;
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 });
+    try {
+      const node = await renderStudio();
+      let editor: HTMLTextAreaElement | null = null;
+      await waitFor(() => {
+        editor = node.querySelector('[data-testid="markdown-editor"]');
+        expect(editor?.value).toContain("# Demo Skill");
+      });
+      await keyDown(editor!, "E");
+      await waitFor(() => expect(editor?.value).toContain("Edited body"));
+      const tabs = Array.from(node.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+      await act(() => { tabs.find((tab) => tab.textContent === "Input")!.focus(); });
+      await waitFor(() => expect(node.querySelector('[data-state="active"][role="tab"]')?.textContent).toBe("Input"));
+      await act(() => { tabs.find((tab) => tab.textContent === "Skill")!.focus(); });
+      await waitFor(() => {
+        expect(node.querySelector<HTMLTextAreaElement>('[data-testid="markdown-editor"]')?.value).toContain("Edited body");
+      });
+      expect(mockCompanySkillsApi.updateFile).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: previousWidth });
+    }
   });
 
   it("does not show the frontmatter section when the selected markdown file has no frontmatter", async () => {

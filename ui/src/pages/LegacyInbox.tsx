@@ -805,6 +805,7 @@ export function Inbox() {
   const {
     data: joinRequests = [],
     isLoading: isJoinRequestsLoading,
+    error: joinRequestsError,
   } = useQuery({
     queryKey: queryKeys.access.joinRequests(selectedCompanyId!),
     queryFn: async () => {
@@ -828,7 +829,7 @@ export function Inbox() {
     queryKey: dashboardQueryKey,
     enabled: !!selectedCompanyId,
   });
-  const { data: dashboard, isLoading: isDashboardLoading, dataUpdatedAt: dashboardUpdatedAt } = useQuery({
+  const { data: dashboard, isLoading: isDashboardLoading, error: dashboardError, dataUpdatedAt: dashboardUpdatedAt } = useQuery({
     queryKey: dashboardQueryKey,
     queryFn: () => dashboardApi.summary(selectedCompanyId!),
     enabled: !!selectedCompanyId,
@@ -842,7 +843,7 @@ export function Inbox() {
     queryKey: inboxIssuesQueryKey,
     enabled: !!selectedCompanyId,
   });
-  const { data: issues, isLoading: isIssuesLoading, dataUpdatedAt: issuesUpdatedAt } = useQuery({
+  const { data: issues, isLoading: isIssuesLoading, error: issuesError, dataUpdatedAt: issuesUpdatedAt } = useQuery({
     queryKey: inboxIssuesQueryKey,
     queryFn: () =>
       issuesApi.listCompact(selectedCompanyId!, {
@@ -858,6 +859,7 @@ export function Inbox() {
   const {
     data: mineIssuesRaw = [],
     isLoading: isMineIssuesLoading,
+    error: mineIssuesError,
     dataUpdatedAt: mineIssuesUpdatedAt,
   } = useQuery({
     queryKey: [...queryKeys.issues.listMineByMe(selectedCompanyId!), "compact", "with-routine-executions", "live-descendant-summary", INBOX_ISSUE_LIST_LIMIT] as const,
@@ -885,6 +887,7 @@ export function Inbox() {
   const {
     data: touchedIssuesRaw = [],
     isLoading: isTouchedIssuesLoading,
+    error: touchedIssuesError,
     dataUpdatedAt: touchedIssuesUpdatedAt,
   } = useQuery({
     queryKey: [...queryKeys.issues.listTouchedByMe(selectedCompanyId!), "compact", "with-routine-executions", "live-descendant-summary", INBOX_ISSUE_LIST_LIMIT] as const,
@@ -909,7 +912,7 @@ export function Inbox() {
   });
   usePublishSharedQueryData(sharedTouchedIssues, touchedIssuesRaw, touchedIssuesUpdatedAt);
 
-  const { data: heartbeatRuns, isLoading: isRunsLoading } = useQuery({
+  const { data: heartbeatRuns, isLoading: isRunsLoading, error: runsError } = useQuery({
     queryKey: [...queryKeys.heartbeats(selectedCompanyId!), "limit", INBOX_HEARTBEAT_RUN_LIMIT],
     queryFn: () => heartbeatsApi.list(selectedCompanyId!, undefined, INBOX_HEARTBEAT_RUN_LIMIT, { summary: true }),
     enabled: !!selectedCompanyId,
@@ -971,7 +974,7 @@ export function Inbox() {
   const shouldUseIssueSearchSupplement =
     !!selectedCompanyId
     && normalizedSearchQuery.length > 0;
-  const { data: remoteIssueSearchResults = [] } = useQuery({
+  const { data: remoteIssueSearchResults = [], error: searchError } = useQuery({
     queryKey: [
       ...queryKeys.issues.search(selectedCompanyId!, normalizedSearchQuery, undefined, 25),
       "compact",
@@ -2243,6 +2246,16 @@ export function Inbox() {
     showWorkItemsSection ? "work_items" : null,
   ].filter((key): key is SectionKey => key !== null);
 
+  const inboxLoadError = tab === "blocked" ? null : (
+    (tab === "mine" ? mineIssuesError : touchedIssuesError)
+    ?? issuesError
+    ?? approvalsError
+    ?? joinRequestsError
+    ?? runsError
+    ?? (showCompanyAlerts ? dashboardError : null)
+    ?? (normalizedSearchQuery ? searchError : null)
+  );
+
   const allLoaded =
     !isJoinRequestsLoading &&
     !isApprovalsLoading &&
@@ -2582,7 +2595,12 @@ export function Inbox() {
         </div>
       )}
 
-      {approvalsError && <p className="text-sm text-destructive">{approvalsError.message}</p>}
+      {inboxLoadError && (
+        <p role="alert" className="text-sm text-destructive">
+          Inbox could not be fully loaded. {inboxLoadError.message}
+        </p>
+      )}
+      {tab === "blocked" && approvalsError && <p className="text-sm text-destructive">{approvalsError.message}</p>}
       {actionError && <p className="text-sm text-destructive">{actionError}</p>}
 
       {tab === "blocked" ? (
@@ -2610,7 +2628,7 @@ export function Inbox() {
         <PageSkeleton variant="inbox" />
       )}
 
-      {tab !== "blocked" && allLoaded && visibleSections.length === 0 && (
+      {tab !== "blocked" && allLoaded && !inboxLoadError && visibleSections.length === 0 && (
         <EmptyState
           icon={searchQuery.trim() ? Search : InboxIcon}
           message={

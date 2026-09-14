@@ -523,6 +523,7 @@ export const FullShellProductionDesk: Story = { render: () => <DecisionsRouteSce
 export const FullShellEmpty: Story = { render: () => <DecisionsRouteScenario state="empty" /> };
 export const FullShellLoading: Story = { render: () => <DecisionsRouteScenario state="loading" /> };
 export const FullShellError: Story = { render: () => <DecisionsRouteScenario state="error" /> };
+export const FullShellQueueError: Story = { render: () => <DecisionsRouteScenario queue state="error" /> };
 
 export const TodaysDesk: Story = {
   render: () => (

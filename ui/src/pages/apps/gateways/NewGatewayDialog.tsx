@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ToolMcpGatewayContextScopeType, ToolProfileWithDetails } from "@paperclipai/shared";
 import { toolsApi } from "@/api/tools";
@@ -36,6 +36,7 @@ export function NewGatewayDialog({
 }) {
   const queryClient = useQueryClient();
   const { pushToast } = useToast();
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [profileId, setProfileId] = useState("");
@@ -90,7 +91,19 @@ export function NewGatewayDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent
+        className="sm:max-w-lg"
+        onOpenAutoFocus={() => {
+          returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        }}
+        onCloseAutoFocus={(event) => {
+          if (returnFocusRef.current?.isConnected) {
+            event.preventDefault();
+            returnFocusRef.current.focus();
+          }
+          returnFocusRef.current = null;
+        }}
+      >
         <DialogHeader>
           <DialogTitle>New gateway</DialogTitle>
           <DialogDescription>
@@ -106,7 +119,6 @@ export function NewGatewayDialog({
               onChange={(event) => setName(event.target.value)}
               placeholder="CTO agents"
               required
-              autoFocus
             />
           </label>
           <label className="block space-y-1.5">

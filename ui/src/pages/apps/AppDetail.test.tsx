@@ -440,8 +440,7 @@ describe("AppDetail", () => {
     vi.clearAllMocks();
   });
 
-  async function renderAppDetail() {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  async function renderAppDetail(client = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
     root = createRoot(container);
     await act(async () => {
       root.render(
@@ -452,6 +451,24 @@ describe("AppDetail", () => {
     });
     await flushReact();
   }
+
+  it("shows connection read failures without claiming the app is missing", async () => {
+    getConnectionMock.mockRejectedValue(new Error("Connection service unavailable."));
+    await renderAppDetail();
+    await vi.waitFor(() => expect(container.querySelector('[role="alert"]')?.textContent).toContain("Connection service unavailable."));
+    expect(container.textContent).not.toContain("We couldn't find that app.");
+  });
+
+  it("keeps cached connection content when its refresh fails", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    await renderAppDetail(client);
+    await vi.waitFor(() => expect(container.querySelector("[data-app-logo]")).not.toBeNull());
+    getConnectionMock.mockRejectedValue(new Error("Connection refresh unavailable."));
+    await act(async () => { await client.refetchQueries({ queryKey: ["tools", "connection", "conn-1"], exact: true }); });
+    await vi.waitFor(() => expect(container.querySelector('[role="alert"]')?.textContent).toContain("Connection refresh unavailable."));
+    expect(container.querySelector("[data-app-logo]")).not.toBeNull();
+    expect(container.textContent).not.toContain("We couldn't find that app.");
+  });
 
   it("uses Permissions as the primary connection page and has no Setup tab", () => {
     expect(APP_TABS.map((tab) => tab.key)).toEqual([

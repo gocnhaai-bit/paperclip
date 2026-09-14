@@ -22,6 +22,12 @@ for (const [width, height] of [[1440, 900], [1280, 800], [768, 1024], [390, 844]
   }
 }
 
+test("approval list failure does not claim no pending approvals", async ({ page }) => {
+  await page.goto("/iframe.html?id=pages-warm-workspace-approvals--approvals-list-error&viewMode=story");
+  await expect(page.getByText("Sample approvals could not be loaded.")).toBeVisible();
+  await expect(page.getByText("No pending approvals.", { exact: true })).toHaveCount(0);
+});
+
 test("approval read errors are not mislabeled as missing records", async ({ page }) => {
   await page.goto("/iframe.html?id=pages-warm-workspace-approvals--approval-detail-error&viewMode=story");
   await expect(page.getByText("Sample approval could not be loaded.", { exact: true })).toBeVisible();

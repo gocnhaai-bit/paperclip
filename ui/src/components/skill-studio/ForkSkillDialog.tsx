@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { GitFork, Loader2, Users } from "lucide-react";
 import type {
@@ -51,6 +51,7 @@ export function ForkSkillDialog({
   const queryClient = useQueryClient();
   const toast = useOptionalToastActions();
   const [reassign, setReassign] = useState(true);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   // Seed from the already-loaded skill detail so the dialog renders instantly,
   // then let the dedicated precheck endpoint refresh usage/existing-fork data.
@@ -143,7 +144,19 @@ export function ForkSkillDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => (busy ? undefined : onOpenChange(next))}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent
+        className="sm:max-w-lg"
+        onOpenAutoFocus={() => {
+          returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        }}
+        onCloseAutoFocus={(event) => {
+          if (returnFocusRef.current?.isConnected) {
+            event.preventDefault();
+            returnFocusRef.current.focus();
+          }
+          returnFocusRef.current = null;
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <GitFork className="h-4 w-4" />

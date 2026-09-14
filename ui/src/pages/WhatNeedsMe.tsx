@@ -546,10 +546,10 @@ export function WhatNeedsMe() {
         />
       </div>
 
-      {error && <p className="text-sm text-destructive">{(error as Error).message}</p>}
+      {error && <p role="alert" className="text-sm text-destructive">{(error as Error).message}</p>}
 
       {!hasAnything ? (
-        <ZeroState />
+        !error && <ZeroState />
       ) : (
         <div className="space-y-4">
           {visibleCount === 0 ? (

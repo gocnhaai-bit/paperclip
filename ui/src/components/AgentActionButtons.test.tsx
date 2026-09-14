@@ -6,7 +6,8 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Agent } from "@paperclipai/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AgentActionButtons } from "./AgentActionButtons";
+import { renderToStaticMarkup } from "react-dom/server";
+import { AgentActionButtons, PauseResumeButton, RunButton } from "./AgentActionButtons";
 
 const mockNavigate = vi.hoisted(() => vi.fn());
 const mockOpenNewIssue = vi.hoisted(() => vi.fn());
@@ -89,6 +90,16 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
     ...overrides,
   };
 }
+
+describe("mobile action names", () => {
+  it("keeps run, pause and resume named when their visible labels are hidden", () => {
+    expect(renderToStaticMarkup(<RunButton label="Run routine" onClick={() => {}} />)).toContain('aria-label="Run routine"');
+    for (const isPaused of [false, true]) {
+      expect(renderToStaticMarkup(<PauseResumeButton isPaused={isPaused} onPause={() => {}} onResume={() => {}} />))
+        .toContain(`aria-label="${isPaused ? "Resume" : "Pause"}"`);
+    }
+  });
+});
 
 describe("AgentActionButtons", () => {
   let container: HTMLDivElement;

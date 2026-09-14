@@ -101,10 +101,10 @@ export function Approvals() {
         </Tabs>
       </div>
 
-      {error && <p className="text-sm text-destructive">{error.message}</p>}
+      {error && <p role="alert" className="text-sm text-destructive">{error.message}</p>}
       {actionError && <p className="text-sm text-destructive">{actionError}</p>}
 
-      {filtered.length === 0 && (
+      {!error && filtered.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <ShieldCheck className="h-8 w-8 text-muted-foreground/30 mb-3" />
           <p className="text-sm text-muted-foreground">

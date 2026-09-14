@@ -242,6 +242,12 @@ export const Empty: StoryObj = {
 export const Loading: StoryObj = {
   render: () => <InboxScenario streamlined tab="mine" state="loading" />,
 };
+export const MineError: StoryObj = {
+  render: () => <InboxScenario streamlined tab="mine" state="error" />,
+};
+export const LegacyMineError: StoryObj = {
+  render: () => <InboxScenario streamlined={false} tab="mine" state="error" />,
+};
 export const BlockedError: StoryObj = {
   render: () => <InboxScenario streamlined tab="blocked" state="error" />,
 };

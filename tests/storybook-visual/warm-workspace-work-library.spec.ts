@@ -2,6 +2,93 @@ import { expect, test } from "@playwright/test";
 
 for (const [width, height] of [[1440, 900], [1280, 800], [768, 1024], [390, 844]]) {
   for (const theme of ["light", "dark"]) {
+    test(`Routine production populated trigger ${theme} ${width}`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto(`/iframe.html?id=pages-warm-workspace-routines--triggers-populated-production&viewMode=story&globals=theme:${theme}`);
+      await expect(page.locator("main").getByText("Weekly schedule", { exact: true })).toBeVisible();
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+    });
+    test(`Routine production populated run ${theme} ${width}`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto(`/iframe.html?id=pages-warm-workspace-routines--runs-populated-production&viewMode=story&globals=theme:${theme}`);
+      const main = page.locator("main");
+      await expect(main.getByText("Preview dispatch unavailable", { exact: false })).toBeVisible();
+      const status = main.getByRole("combobox", { name: "Filter by status" });
+      await status.click();
+      await page.getByRole("option", { name: "failed", exact: true }).click();
+      await expect(main.getByText("Preview dispatch unavailable", { exact: false })).toBeVisible();
+      await status.click();
+      await page.keyboard.press("Escape");
+      await expect(status).toBeFocused();
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+    });
+  }
+}
+
+test("artifact load failure is not an empty library", async ({ page }) => {
+  await page.goto("/iframe.html?id=pages-warm-workspace-artifacts--error&viewMode=story");
+  await expect(page.getByText("Sample artifacts could not be loaded.")).toBeVisible();
+  await expect(page.getByText("No artifact stacks yet.", { exact: true })).toHaveCount(0);
+});
+
+for (const state of ["loading", "error"]) {
+  test(`routine detail ${state} is visible`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/iframe.html?id=pages-warm-workspace-routines--detail-${state}&viewMode=story&globals=theme:dark`);
+    if (state === "error") await expect(page.getByText("Sample routine could not be loaded.")).toBeVisible();
+    else await expect(page.locator('main [data-slot="skeleton"]').first()).toBeVisible();
+  });
+}
+
+for (const story of ["detail", "detail-production"]) {
+  for (const [width, height] of [[1440, 900], [390, 844]]) {
+    test(`routine detail actual owner ${story} ${width}`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto(`/iframe.html?id=pages-warm-workspace-routines--${story}&viewMode=story`);
+      await expect(page.locator("main").getByText("Weekly digest", { exact: true }).first()).toBeVisible();
+      await expect(page.getByText(/Preview navigation:/)).toHaveCount(0);
+      if (story === "detail") {
+        await page.getByRole("button", { name: "History", exact: true }).click();
+        await expect(page.getByRole("button", { name: "Back to overview", exact: true })).toBeVisible();
+        await page.getByRole("button", { name: "Back to overview", exact: true }).click();
+        await page.getByRole("button", { name: "Edit routine", exact: true }).click();
+        await expect(page.getByPlaceholder("Routine title", { exact: true })).toHaveValue("Weekly digest");
+        await page.getByRole("button", { name: "Cancel editing", exact: true }).click();
+        await expect(page.getByRole("button", { name: "Edit routine", exact: true })).toBeVisible();
+        const runButton = page.getByRole("button", { name: "Run now", exact: true });
+        await runButton.click();
+        const dialog = page.getByRole("dialog");
+        await expect(dialog.getByRole("heading", { name: "Run routine", exact: true })).toBeVisible();
+        await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+        await expect(dialog).toBeHidden();
+        await expect(runButton).toBeFocused();
+      }
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+    });
+  }
+}
+
+for (const [width, height] of [[1440, 900], [390, 844]]) {
+  test(`artifact stack opens and returns with its search preserved at ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto("/iframe.html?id=pages-warm-workspace-artifacts--populated&viewMode=story");
+    const search = page.getByRole("textbox", { name: "Search artifacts", exact: true });
+    await search.fill("workspace-layout-review-notes");
+    const stack = page.getByTestId("artifact-group-card");
+    await expect(stack).toHaveCount(1);
+    await stack.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("artifact-stack-back")).toBeVisible();
+    await expect(page.locator("main").getByText("workspace-layout-review-notes.txt", { exact: true }).first()).toBeVisible();
+    await page.getByTestId("artifact-stack-back").click();
+    await expect(stack).toBeVisible();
+    await expect(search).toHaveValue("workspace-layout-review-notes");
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+  });
+}
+
+for (const [width, height] of [[1440, 900], [1280, 800], [768, 1024], [390, 844]]) {
+  for (const theme of ["light", "dark"]) {
     for (const family of ["artifacts", "routines", "routines-production"]) {
       test(`${family} populated full shell ${theme} ${width}`, async ({ page }) => {
         await page.setViewportSize({ width, height });

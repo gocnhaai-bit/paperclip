@@ -251,15 +251,19 @@ function persistRunTemplateSelection(companyId: string, selection: RunTemplateSe
   }
 }
 
-function useIsMobile() {
+function useIsMobile(containerRef: React.RefObject<HTMLDivElement | null>) {
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== "undefined" && window.innerWidth < MOBILE_BREAKPOINT,
   );
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
+    const container = containerRef.current;
+    if (!container) return;
+    const update = () => setIsMobile(container.clientWidth < MOBILE_BREAKPOINT);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [containerRef]);
   return isMobile;
 }
 
@@ -359,17 +363,24 @@ export function SkillStudio() {
   if (detailQuery.isLoading) {
     return <StudioMessage message="Loading skill…" />;
   }
-  if (detailQuery.isError || !detailQuery.data) {
+  if (detailQuery.isError && !detailQuery.data) {
+    return <StudioMessage message={detailQuery.error.message} />;
+  }
+  if (!detailQuery.data) {
     return <StudioMessage message="Skill not found." />;
   }
 
   return (
-    <StudioShell
-      companyId={companyId}
-      skill={detailQuery.data}
-      skills={skillsQuery.data ?? []}
-      skillsLoading={skillsQuery.isLoading}
-    />
+    <>
+      {detailQuery.error && <p role="alert" className="text-sm text-destructive">{detailQuery.error.message}</p>}
+      <StudioShell
+        key={`${companyId}:${skillId}`}
+        companyId={companyId}
+        skill={detailQuery.data}
+        skills={skillsQuery.data ?? []}
+        skillsLoading={skillsQuery.isLoading}
+      />
+    </>
   );
 }
 
@@ -933,7 +944,8 @@ function StudioShell({
   skillsLoading: boolean;
 }) {
   const skillId = skill.id;
-  const isMobile = useIsMobile();
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const isMobile = useIsMobile(containerRef);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -951,6 +963,12 @@ function StudioShell({
   const [skillDirty, setSkillDirty] = useState(false);
   const [versionSheetOpen, setVersionSheetOpen] = useState(false);
   const [forkDialogOpen, setForkDialogOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(() =>
+    skill.fileInventory.find((file) => /skill\.md$/i.test(file.path))?.path ?? skill.fileInventory[0]?.path ?? "SKILL.md",
+  );
+  const [fileDraft, setFileDraft] = useState("");
+  const [savedFileContent, setSavedFileContent] = useState("");
+  const [savedInputDraft, setSavedInputDraft] = useState<SavedInputDraftState>(EMPTY_SAVED_INPUT_DRAFT_STATE);
 
   const layoutRef = useRef<PaneLayout>(loadPaneLayout());
 
@@ -995,6 +1013,12 @@ function StudioShell({
       companyId={companyId}
       skill={skill}
       onDirtyChange={setSkillDirty}
+      selectedFile={selectedFile}
+      setSelectedFile={setSelectedFile}
+      draft={fileDraft}
+      setDraft={setFileDraft}
+      savedContent={savedFileContent}
+      setSavedContent={setSavedFileContent}
       onEditACopy={() => setForkDialogOpen(true)}
     />
   );
@@ -1005,6 +1029,9 @@ function StudioShell({
       skillId={skillId}
       inputs={inputs}
       loading={inputsQuery.isLoading}
+      error={inputsQuery.error}
+      savedInputDraft={savedInputDraft}
+      setSavedInputDraft={setSavedInputDraft}
       selectedInputId={selectedInputId}
       adHocMode={adHocMode}
       adHocContent={adHocContent}
@@ -1040,7 +1067,7 @@ function StudioShell({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex h-full min-h-0 flex-col">
+      <div ref={containerRef} className="flex h-full min-h-0 flex-col">
         <StudioHeader
           companyId={companyId}
           skill={skill}
@@ -1143,7 +1170,7 @@ function StudioHeader({
   }, [toast]);
 
   return (
-    <header className="flex items-center gap-3 border-b border-border px-3 py-2">
+    <header className="flex flex-wrap items-center gap-3 border-b border-border px-3 py-2">
       <SkillSwitcher
         skill={skill}
         skills={skills}
@@ -1262,11 +1289,23 @@ function SkillPane({
   skill,
   onDirtyChange,
   onEditACopy,
+  selectedFile,
+  setSelectedFile,
+  draft,
+  setDraft,
+  savedContent,
+  setSavedContent,
 }: {
   companyId: string;
   skill: CompanySkillDetail;
   onDirtyChange: (dirty: boolean) => void;
   onEditACopy: () => void;
+  selectedFile: string;
+  setSelectedFile: React.Dispatch<React.SetStateAction<string>>;
+  draft: string;
+  setDraft: React.Dispatch<React.SetStateAction<string>>;
+  savedContent: string;
+  setSavedContent: React.Dispatch<React.SetStateAction<string>>;
 }) {
   const skillId = skill.id;
   const queryClient = useQueryClient();
@@ -1275,12 +1314,7 @@ function SkillPane({
     () => skill.fileInventory.map((f) => f.path),
     [skill.fileInventory],
   );
-  const [selectedFile, setSelectedFile] = useState<string>(
-    () => paths.find((p) => /skill\.md$/i.test(p)) ?? paths[0] ?? "SKILL.md",
-  );
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
-  const [draft, setDraft] = useState<string>("");
-  const [savedContent, setSavedContent] = useState<string>("");
   const [createDialog, setCreateDialog] = useState<"file" | "folder" | null>(null);
   const [deleteFolderOpen, setDeleteFolderOpen] = useState(false);
   // Gate rich-editor onChange until the user actually interacts with the body.
@@ -1303,7 +1337,8 @@ function SkillPane({
   });
 
   useEffect(() => {
-    if (fileQuery.data) {
+    // Responsive remounts and background refreshes must not replace local edits.
+    if (fileQuery.data && draft === savedContent) {
       bodyInteractedRef.current = false;
       setDraft(fileQuery.data.content);
       setSavedContent(fileQuery.data.content);
@@ -1327,6 +1362,8 @@ function SkillPane({
     ) {
       return;
     }
+    setDraft("");
+    setSavedContent("");
     setSelectedFile(path);
   }, [dirty, selectedFile]);
 
@@ -1334,6 +1371,7 @@ function SkillPane({
     mutationFn: () => companySkillsApi.updateFile(companyId, skillId, selectedFile, draft),
     onSuccess: (updated) => {
       setSavedContent(updated.content);
+      queryClient.setQueryData(queryKeys.companySkills.file(companyId, skillId, updated.path), updated);
       queryClient.invalidateQueries({
         queryKey: queryKeys.companySkills.detail(companyId, skillId),
       });
@@ -1506,7 +1544,7 @@ function SkillPane({
                 {dirty && <Badge variant="secondary">Unsaved</Badge>}
                 <Button
                   size="sm"
-                  disabled={!dirty || saveMutation.isPending}
+                  disabled={!fileQuery.data || !dirty || saveMutation.isPending}
                   onClick={() => saveMutation.mutate()}
                 >
                   {saveMutation.isPending ? "Saving…" : "Save"}
@@ -1515,7 +1553,10 @@ function SkillPane({
             )}
           </div>
         </div>
-        {isMarkdown && markdownBlock?.hasFrontmatter ? (
+        {fileQuery.error && (
+          <p role="alert" className="px-3 py-2 text-sm text-destructive">{fileQuery.error.message}</p>
+        )}
+        {fileQuery.data && isMarkdown && markdownBlock?.hasFrontmatter ? (
           <FrontmatterPanel
             key={`fm:${selectedFile}`}
             frontmatterText={markdownBlock.frontmatterText}
@@ -1543,7 +1584,9 @@ function SkillPane({
           onPasteCapture={markBodyInteracted}
           onPointerDownCapture={markBodyInteracted}
         >
-          {isMarkdown && markdownBlock ? (
+          {!fileQuery.data ? (
+            fileQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading file…</p> : null
+          ) : isMarkdown && markdownBlock ? (
             <MarkdownEditor
               key={`body:${selectedFile}`}
               value={markdownBlock.body}
@@ -1885,6 +1928,9 @@ function InputPane({
   skillId,
   inputs,
   loading,
+  error,
+  savedInputDraft,
+  setSavedInputDraft,
   selectedInputId,
   adHocMode,
   adHocContent,
@@ -1896,6 +1942,9 @@ function InputPane({
   skillId: string;
   inputs: CompanySkillTestInput[];
   loading: boolean;
+  error: Error | null;
+  savedInputDraft: SavedInputDraftState;
+  setSavedInputDraft: React.Dispatch<React.SetStateAction<SavedInputDraftState>>;
   selectedInputId: string | null;
   adHocMode: boolean;
   adHocContent: string;
@@ -1906,9 +1955,6 @@ function InputPane({
   const queryClient = useQueryClient();
   const onError = useMutationErrorToast();
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
-  const [savedInputDraft, setSavedInputDraft] = useState<SavedInputDraftState>(
-    EMPTY_SAVED_INPUT_DRAFT_STATE,
-  );
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -2040,6 +2086,7 @@ function InputPane({
         </div>
       }
     >
+      {error && <p role="alert" className="px-3 py-2 text-sm text-destructive">{error.message}</p>}
       {collapsed ? (
         <button
           type="button"
@@ -2565,10 +2612,11 @@ function RunsPane({
           </div>
         )}
         <div className="min-h-0 flex-1 overflow-auto p-3">
+          {runsQuery.error && <p role="alert" className="text-sm text-destructive">{runsQuery.error.message}</p>}
           {runsQuery.isLoading ? (
             <div className="text-xs text-muted-foreground">Loading runs…</div>
           ) : runs.length === 0 ? (
-            <EmptyState icon={FlaskConical} message="No test runs yet. Pick an agent and Run." />
+            !runsQuery.error && <EmptyState icon={FlaskConical} message="No test runs yet. Pick an agent and Run." />
           ) : (
             <div className="space-y-1 rounded-md border border-border p-1">
               {runs.map((run) => (
@@ -3425,6 +3473,8 @@ function VersionHistorySheet({
   onFilterRuns: (inputId: string) => void;
 }) {
   const skillId = skill.id;
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const onError = useMutationErrorToast();
   const queryClient = useQueryClient();
   const versionsQuery = useQuery({
     queryKey: queryKeys.companySkills.versions(companyId, skillId),
@@ -3450,6 +3500,7 @@ function VersionHistorySheet({
       queryClient.invalidateQueries({ queryKey: queryKeys.companySkills.versions(companyId, skillId) });
       onRestored();
     },
+    onError: onError("Couldn't restore version"),
   });
 
   const left = versions.find((v) => v.id === leftId) ?? null;
@@ -3461,15 +3512,29 @@ function VersionHistorySheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="left" className="w-full sm:max-w-(--sz-560px)">
+      <SheetContent
+        side="left"
+        className="w-full sm:max-w-(--sz-560px)"
+        onOpenAutoFocus={() => {
+          returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        }}
+        onCloseAutoFocus={(event) => {
+          if (returnFocusRef.current?.isConnected) {
+            event.preventDefault();
+            returnFocusRef.current.focus();
+          }
+          returnFocusRef.current = null;
+        }}
+      >
         <SheetHeader>
           <SheetTitle>Version history</SheetTitle>
         </SheetHeader>
         <div className="mt-3 space-y-2 overflow-auto">
+          {versionsQuery.error && <p role="alert" className="text-sm text-destructive">{versionsQuery.error.message}</p>}
           {versionsQuery.isLoading ? (
             <div className="text-xs text-muted-foreground">Loading versions…</div>
           ) : versions.length === 0 ? (
-            <EmptyState icon={History} message="No versions yet. Save changes to create the first." />
+            !versionsQuery.error && <EmptyState icon={History} message="No versions yet. Save changes to create the first." />
           ) : (
             <div className="space-y-1 rounded-md border border-border p-1">
               {versions.map((v) => (
@@ -3585,17 +3650,18 @@ function MobileTabs({
   input: React.ReactNode;
   runs: React.ReactNode;
 }) {
+  const [activeTab, setActiveTab] = useState("skill");
   return (
-    <Tabs defaultValue="skill" className="flex flex-1 flex-col">
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col">
       <TabsList variant="line" className="px-3">
         <TabsTrigger value="skill">Skill</TabsTrigger>
         <TabsTrigger value="input">Input</TabsTrigger>
         <TabsTrigger value="runs">Runs</TabsTrigger>
       </TabsList>
-      <TabsContent value="skill" className="min-h-0 flex-1">
+      <TabsContent forceMount hidden={activeTab !== "skill"} value="skill" className="min-h-0 flex-1">
         {skill}
       </TabsContent>
-      <TabsContent value="input" className="min-h-0 flex-1">
+      <TabsContent forceMount hidden={activeTab !== "input"} value="input" className="min-h-0 flex-1">
         {input}
       </TabsContent>
       <TabsContent value="runs" className="min-h-0 flex-1">

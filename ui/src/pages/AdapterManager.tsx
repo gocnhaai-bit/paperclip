@@ -275,7 +275,7 @@ export function AdapterManager() {
     ]);
   }, [selectedCompany?.name, setBreadcrumbs]);
 
-  const { data: adapters, isLoading } = useQuery({
+  const { data: adapters, isLoading, error } = useQuery({
     queryKey: queryKeys.adapters.all,
     queryFn: () => adaptersApi.list(),
   });
@@ -392,11 +392,13 @@ export function AdapterManager() {
     }));
 
   if (isLoading) return <div className="p-4 text-sm text-muted-foreground">Loading adapters...</div>;
+  if (error && !adapters) return <p role="alert" className="p-4 text-sm text-destructive">{error.message}</p>;
 
   const isMutating = installMutation.isPending || removeMutation.isPending || toggleMutation.isPending || overrideMutation.isPending || reloadMutation.isPending || reinstallMutation.isPending;
 
   return (
     <div className="max-w-6xl space-y-6">
+      {error && <p role="alert" className="text-sm text-destructive">{error.message}</p>}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">

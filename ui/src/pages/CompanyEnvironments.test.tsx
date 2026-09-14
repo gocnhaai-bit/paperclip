@@ -561,6 +561,15 @@ describe("CompanyEnvironments — test provider button", () => {
     vi.clearAllMocks();
   });
 
+  it("announces environment list failures and prevents changing an incomplete default", async () => {
+    mockEnvironmentsApi.list.mockRejectedValue(new Error("Environments unavailable."));
+    root = createRoot(container);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    await act(async () => { root!.render(renderCompanyEnvironments(client)); });
+    await vi.waitFor(() => expect(container.querySelector('[role="alert"]')?.textContent).toContain("Environments unavailable."));
+    expect(container.querySelector<HTMLSelectElement>('select[aria-label="Default environment"]')?.disabled).toBe(true);
+  });
+
   it("shows the testing state only on the clicked environment's button", async () => {
     root = createRoot(container);
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });

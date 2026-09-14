@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   WORKSPACE_BRANCH_ROUTINE_VARIABLE,
   type Agent,
@@ -209,6 +209,7 @@ export function RoutineRunVariablesDialog({
   isPending: boolean;
   onSubmit: (data: RoutineRunDialogSubmitData) => void;
 }) {
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [selection, setSelection] = useState(() => buildInitialRunSelection({
     defaultAssigneeAgentId,
@@ -341,7 +342,19 @@ export function RoutineRunVariablesDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !isPending && onOpenChange(next)}>
-      <DialogContent className="flex h-(--sz-calc-18) max-h-(--sz-calc-18) max-w-xl flex-col gap-0 overflow-hidden p-0 sm:h-auto sm:max-h-(--sz-calc-20)">
+      <DialogContent
+        onOpenAutoFocus={() => {
+          returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        }}
+        onCloseAutoFocus={(event) => {
+          if (returnFocusRef.current?.isConnected) {
+            event.preventDefault();
+            returnFocusRef.current.focus();
+          }
+          returnFocusRef.current = null;
+        }}
+        className="flex h-(--sz-calc-18) max-h-(--sz-calc-18) max-w-xl flex-col gap-0 overflow-hidden p-0 sm:h-auto sm:max-h-(--sz-calc-20)"
+      >
         <DialogHeader className="shrink-0 border-b border-border/60 px-6 pb-4 pr-12 pt-6">
           {routineName && (
             <p className="text-muted-foreground text-sm">{routineName}</p>
