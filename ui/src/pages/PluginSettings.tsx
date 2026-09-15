@@ -7,7 +7,7 @@ import { useBreadcrumbs } from "@/context/BreadcrumbContext";
 import { useManagedSandboxOnly } from "@/hooks/useManagedSandboxOnly";
 import { Link, Navigate, useParams } from "@/lib/router";
 import { PluginSlotMount, usePluginSlots } from "@/plugins/slots";
-import { pluginsApi, type PluginLocalFolderStatus } from "@/api/plugins";
+import { pluginsApi, type PluginHealthCheckResult, type PluginLocalFolderStatus } from "@/api/plugins";
 import { queryKeys } from "@/lib/queryKeys";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -73,21 +73,21 @@ export function PluginSettings() {
     enabled: !!pluginId,
   });
 
-  const { data: healthData, isLoading: healthLoading } = useQuery({
+  const { data: healthData, isLoading: healthLoading, error: healthError } = useQuery({
     queryKey: queryKeys.plugins.health(pluginId!),
     queryFn: () => pluginsApi.health(pluginId!),
     enabled: !!pluginId && plugin?.status === "ready",
     refetchInterval: 30000,
   });
 
-  const { data: dashboardData } = useQuery({
+  const { data: dashboardData, error: dashboardError } = useQuery({
     queryKey: queryKeys.plugins.dashboard(pluginId!),
     queryFn: () => pluginsApi.dashboard(pluginId!),
     enabled: !!pluginId,
     refetchInterval: 30000,
   });
 
-  const { data: recentLogs } = useQuery({
+  const { data: recentLogs, error: logsError } = useQuery({
     queryKey: queryKeys.plugins.logs(pluginId!),
     queryFn: () => pluginsApi.logs(pluginId!, { limit: 50 }),
     enabled: !!pluginId && plugin?.status === "ready",
@@ -308,6 +308,11 @@ export function PluginSettings() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  {dashboardError ? (
+                    <p role="alert" className="text-sm text-destructive">
+                      {dashboardError instanceof Error ? dashboardError.message : "Runtime diagnostics could not be loaded."}
+                    </p>
+                  ) : null}
                   {dashboardData ? (
                     <>
                       <div>
@@ -432,7 +437,7 @@ export function PluginSettings() {
                         Last checked: {new Date(dashboardData.checkedAt).toLocaleTimeString()}
                       </div>
                     </>
-                  ) : (
+                  ) : dashboardError ? null : (
                     <p className="text-sm text-muted-foreground">
                       Runtime diagnostics are unavailable right now.
                     </p>
@@ -440,6 +445,11 @@ export function PluginSettings() {
                 </CardContent>
               </Card>
 
+              {logsError ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {logsError instanceof Error ? logsError.message : "Recent logs could not be loaded."}
+                </p>
+              ) : null}
               {recentLogs && recentLogs.length > 0 ? (
                 <Card>
                   <CardHeader>
@@ -486,38 +496,15 @@ export function PluginSettings() {
                 <CardContent>
                   {healthLoading ? (
                     <p className="text-sm text-muted-foreground">Checking health...</p>
-                  ) : healthData ? (
-                    <div className="space-y-4 text-sm">
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Overall</span>
-                        <Badge variant={healthData.healthy ? "default" : "destructive"}>
-                          {healthData.status}
-                        </Badge>
-                      </div>
-
-                      {healthData.checks.length > 0 ? (
-                        <div className="space-y-2 border-t border-border/50 pt-2">
-                          {healthData.checks.map((check, i) => (
-                            <div key={i} className="flex items-start justify-between gap-2">
-                              <span className="truncate text-muted-foreground" title={check.name}>
-                                {check.name}
-                              </span>
-                              {check.passed ? (
-                                <CheckCircle className="h-4 w-4 shrink-0 text-green-500" />
-                              ) : (
-                                <XCircle className="h-4 w-4 shrink-0 text-destructive" />
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
-
-                      {healthData.lastError ? (
-                        <div className="break-words rounded border border-destructive/20 bg-destructive/10 p-2 text-xs text-destructive">
-                          {healthData.lastError}
-                        </div>
-                      ) : null}
+                  ) : healthError ? (
+                    <div className="space-y-3">
+                      <p role="alert" className="text-sm text-destructive">
+                        {healthError instanceof Error ? healthError.message : "Health status could not be loaded."}
+                      </p>
+                      {healthData ? <HealthStatusDetails healthData={healthData} /> : null}
                     </div>
+                  ) : healthData ? (
+                    <HealthStatusDetails healthData={healthData} />
                   ) : (
                     <div className="space-y-3 text-sm text-muted-foreground">
                       <div className="flex items-center justify-between">
@@ -586,6 +573,42 @@ export function PluginSettings() {
           </div>
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function HealthStatusDetails({ healthData }: { healthData: PluginHealthCheckResult }) {
+  return (
+    <div className="space-y-4 text-sm">
+      <div className="flex items-center justify-between">
+        <span className="text-muted-foreground">Overall</span>
+        <Badge variant={healthData.healthy ? "default" : "destructive"}>
+          {healthData.status}
+        </Badge>
+      </div>
+
+      {healthData.checks.length > 0 ? (
+        <div className="space-y-2 border-t border-border/50 pt-2">
+          {healthData.checks.map((check, index) => (
+            <div key={index} className="flex items-start justify-between gap-2">
+              <span className="truncate text-muted-foreground" title={check.name}>
+                {check.name}
+              </span>
+              {check.passed ? (
+                <CheckCircle className="h-4 w-4 shrink-0 text-green-500" />
+              ) : (
+                <XCircle className="h-4 w-4 shrink-0 text-destructive" />
+              )}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {healthData.lastError ? (
+        <div className="break-words rounded border border-destructive/20 bg-destructive/10 p-2 text-xs text-destructive">
+          {healthData.lastError}
+        </div>
+      ) : null}
     </div>
   );
 }

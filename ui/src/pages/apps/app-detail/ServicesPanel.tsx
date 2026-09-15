@@ -156,7 +156,7 @@ export function ServicesPanel({
     );
   }
 
-  if (servicesQuery.isError) {
+  if (servicesQuery.isError && !servicesQuery.data) {
     return (
       <ServicesLoadError
         message={servicesQuery.error instanceof Error ? servicesQuery.error.message : null}
@@ -167,7 +167,20 @@ export function ServicesPanel({
 
   return (
     <div className="space-y-6">
-      <ServicesIntro appName={appName} connectedCount={rows.filter((r) => r.state === "connected").length} />
+      {servicesQuery.error && (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3 text-sm text-destructive">
+          <span>{servicesQuery.error instanceof Error ? servicesQuery.error.message : "Couldn’t refresh services."}</span>
+          <Button size="sm" variant="outline" onClick={() => { void servicesQuery.refetch(); }} disabled={servicesQuery.isFetching}>
+            {servicesQuery.isFetching ? "Trying again…" : "Try again"}
+          </Button>
+        </div>
+      )}
+      <ServicesIntro
+        appName={appName}
+        connectedCount={rows.filter((r) => r.state === "connected").length}
+        refreshing={servicesQuery.isFetching}
+        onRefresh={() => { void servicesQuery.refetch(); }}
+      />
       {rows.length === 0 ? (
         <ServicesEmptyState />
       ) : (
@@ -195,22 +208,37 @@ export function ServicesPanel({
   );
 }
 
-function ServicesIntro({ appName, connectedCount }: { appName: string; connectedCount: number }) {
+function ServicesIntro({
+  appName,
+  connectedCount,
+  refreshing,
+  onRefresh,
+}: {
+  appName: string;
+  connectedCount: number;
+  refreshing: boolean;
+  onRefresh: () => void;
+}) {
   return (
-    <div className="max-w-2xl space-y-1">
-      <h2 className="text-lg font-semibold">Services</h2>
-      <p className="text-sm leading-6 text-muted-foreground">
-        {appName} brokers these services. Connect one and it becomes its own app in Paperclip, which
-        you then give to agents on its Permissions tab.
-        {connectedCount > 0 && (
-          <>
-            {" "}
-            <span className="font-medium text-foreground">
-              {connectedCount} {connectedCount === 1 ? "service is" : "services are"} connected.
-            </span>
-          </>
-        )}
-      </p>
+    <div className="flex max-w-2xl flex-wrap items-start justify-between gap-3">
+      <div className="min-w-0 flex-1 space-y-1">
+        <h2 className="text-lg font-semibold">Services</h2>
+        <p className="text-sm leading-6 text-muted-foreground">
+          {appName} brokers these services. Connect one and it becomes its own app in Paperclip, which
+          you then give to agents on its Permissions tab.
+          {connectedCount > 0 && (
+            <>
+              {" "}
+              <span className="font-medium text-foreground">
+                {connectedCount} {connectedCount === 1 ? "service is" : "services are"} connected.
+              </span>
+            </>
+          )}
+        </p>
+      </div>
+      <Button size="sm" variant="outline" onClick={onRefresh} disabled={refreshing}>
+        {refreshing ? "Refreshing…" : "Refresh services"}
+      </Button>
     </div>
   );
 }
@@ -229,7 +257,7 @@ function ServicesEmptyState() {
 
 function ServicesLoadError({ message, onRetry }: { message: string | null; onRetry: () => void }) {
   return (
-    <div className="space-y-3 py-8">
+    <div role="alert" className="space-y-3 py-8">
       <p className="text-sm text-destructive">
         {message ?? "Couldn’t load services from Composio."}
       </p>

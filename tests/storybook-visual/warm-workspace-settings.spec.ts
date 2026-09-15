@@ -1,5 +1,62 @@
 import { expect, test } from "@playwright/test";
 
+for (const [width, height] of [[1440, 900], [1280, 800], [768, 1024], [390, 844]]) {
+  for (const theme of ["light", "dark"]) {
+    test(`Environment populated list and edit ${theme} ${width}`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto(`/iframe.html?id=pages-warm-workspace-settings--environments-populated&viewMode=story&globals=theme:${theme}`);
+      const main = page.locator("main");
+      await expect(main.getByRole("combobox", { name: "Default environment" })).toHaveValue("environment-ssh");
+      await expect(main.getByText("Daytona sandbox provider · node-25", { exact: true })).toBeVisible();
+      await main.locator('a[href$="/environment-ssh/edit"]').click();
+      await expect(main.getByRole("heading", { name: "Edit environment", exact: true })).toBeVisible();
+      await expect(main.getByRole("textbox").first()).toHaveValue("Review workstation");
+      await main.getByRole("button", { name: "Cancel", exact: true }).click();
+      await expect(main.getByRole("combobox", { name: "Default environment" })).toBeVisible();
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+    });
+
+    test(`Environment provider capability create ${theme} ${width}`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto(`/iframe.html?id=pages-warm-workspace-settings--environment-create-populated&viewMode=story&globals=theme:${theme}`);
+      const main = page.locator("main");
+      await expect(main.getByRole("heading", { name: "Add environment", exact: true })).toBeVisible();
+      await main.locator("select").first().selectOption("sandbox");
+      await expect(main.getByText("Disposable sandbox provider for isolated runs.", { exact: true })).toBeVisible();
+      await expect(main.locator('input[value="node-25"]')).toBeVisible();
+      await expect(main.getByRole("button", { name: "Create environment", exact: true })).toBeDisabled();
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+    });
+  }
+}
+
+for (const [story, isError] of [["plugin-details", false], ["plugin-diagnostics-error", true]] as const) {
+  for (const [width, height] of [[1440, 900], [1280, 800], [768, 1024], [390, 844]]) {
+    for (const theme of ["light", "dark"]) {
+      test(`Plugin diagnostics ${story} ${theme} ${width}`, async ({ page }) => {
+        await page.setViewportSize({ width, height });
+        await page.goto(`/iframe.html?id=pages-warm-workspace-settings--${story}&viewMode=story&globals=theme:${theme}`);
+        const main = page.locator("main");
+        if (width < 640) await main.getByRole("combobox", { name: "Page section" }).selectOption("status");
+        else await main.getByRole("tab", { name: "Status", exact: true }).click();
+        if (isError) {
+          await expect(main.getByRole("alert").filter({ hasText: "Sample dashboard unavailable." })).toBeVisible();
+          await expect(main.getByRole("alert").filter({ hasText: "Sample health unavailable." })).toBeVisible();
+          await expect(main.getByRole("alert").filter({ hasText: "Sample logs unavailable." })).toBeVisible();
+          await expect(main.getByText("Runtime diagnostics are unavailable right now.", { exact: true })).toHaveCount(0);
+        } else {
+          await expect(main.getByText("nightly-review", { exact: true })).toBeVisible();
+          await expect(main.getByText("review.created", { exact: true })).toBeVisible();
+          await expect(main.getByText("Sample queue retry scheduled.", { exact: true })).toBeVisible();
+          await expect(main.getByText("Worker heartbeat", { exact: true })).toBeVisible();
+          await expect(main.getByText("One sample delivery failed.", { exact: true })).toBeVisible();
+        }
+        await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+      });
+    }
+  }
+}
+
 for (const [width, height] of [[1440, 900], [390, 844]]) {
   test(`Environment create form can be cancelled ${width}`, async ({ page }) => {
     await page.setViewportSize({ width, height });

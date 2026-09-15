@@ -1,6 +1,14 @@
-import type { RoutineDetail as RoutineDetailData, RoutineListItem, RoutineTrigger, RoutineRunSummary } from "@paperclipai/shared";
+import type {
+  ActivityEvent,
+  RoutineDetail as RoutineDetailData,
+  RoutineListItem,
+  RoutineRevision,
+  RoutineRunSummary,
+  RoutineTrigger,
+} from "@paperclipai/shared";
 import { RoutineDetail } from "@/pages/RoutineDetail";
 import { RoutineDetail as ProductionRoutineDetail } from "@/pages/RoutineDetail.production";
+import { AuditHub } from "@/pages/audit/AuditHub";
 import { useEffect, useState } from "react";
 import { Routes, Route, useLocation, useNavigate } from "@/lib/router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -56,6 +64,143 @@ const SAMPLE_RUN: RoutineRunSummary = {
   linkedIssue: null, trigger: { id: SAMPLE_TRIGGER.id, kind: SAMPLE_TRIGGER.kind, label: SAMPLE_TRIGGER.label },
 };
 
+const SAMPLE_RUNS: RoutineRunSummary[] = [
+  SAMPLE_RUN,
+  {
+    ...SAMPLE_RUN,
+    id: "routine-run-succeeded",
+    triggerId: null,
+    source: "manual",
+    status: "succeeded",
+    triggeredAt: new Date("2026-09-13T08:00:00Z"),
+    completedAt: new Date("2026-09-13T08:01:00Z"),
+    createdAt: new Date("2026-09-13T08:00:00Z"),
+    updatedAt: new Date("2026-09-13T08:01:00Z"),
+    failureReason: null,
+    trigger: null,
+  },
+  {
+    ...SAMPLE_RUN,
+    id: "routine-run-skipped",
+    source: "schedule",
+    status: "skipped",
+    triggeredAt: new Date("2026-09-12T02:00:00Z"),
+    completedAt: new Date("2026-09-12T02:00:00Z"),
+    createdAt: new Date("2026-09-12T02:00:00Z"),
+    updatedAt: new Date("2026-09-12T02:00:00Z"),
+    failureReason: "Skipped because a previous run was active",
+  },
+  {
+    ...SAMPLE_RUN,
+    id: "routine-run-old",
+    source: "api",
+    status: "failed",
+    triggeredAt: new Date("2026-07-01T08:00:00Z"),
+    completedAt: new Date("2026-07-01T08:01:00Z"),
+    createdAt: new Date("2026-07-01T08:00:00Z"),
+    updatedAt: new Date("2026-07-01T08:01:00Z"),
+    failureReason: "Historical preview run",
+    trigger: null,
+  },
+];
+
+const SAMPLE_ACTIVITY: ActivityEvent[] = [
+  {
+    id: "routine-activity-updated",
+    companyId: ROUTINES_COMPANY_ID,
+    actorType: "user",
+    actorId: "user-board",
+    action: "routine.updated",
+    entityType: "routine",
+    entityId: "routine-digest",
+    agentId: null,
+    runId: null,
+    responsibleUserId: "user-board",
+    details: { fields: ["description", "concurrencyPolicy"] },
+    createdAt: new Date("2026-09-14T09:00:00Z"),
+  },
+  {
+    id: "routine-activity-triggered",
+    companyId: ROUTINES_COMPANY_ID,
+    actorType: "system",
+    actorId: "system",
+    action: "routine.run_failed",
+    entityType: "routine_run",
+    entityId: SAMPLE_RUN.id,
+    agentId: "agent-codex",
+    runId: null,
+    responsibleUserId: "user-board",
+    details: { reason: "Preview dispatch unavailable" },
+    createdAt: new Date("2026-09-14T08:00:00Z"),
+  },
+];
+
+const REVISION_ROUTINE = {
+  id: "routine-digest",
+  companyId: ROUTINES_COMPANY_ID,
+  projectId: "project-board-ui",
+  goalId: null,
+  parentIssueId: null,
+  title: "Weekly digest",
+  description: "Prepare the weekly operational digest from completed work.",
+  assigneeAgentId: "agent-codex",
+  priority: "medium" as const,
+  status: "active" as const,
+  concurrencyPolicy: "skip_if_active" as const,
+  catchUpPolicy: "skip_missed" as const,
+  activityGatePolicy: "always" as const,
+  activityGateScope: "project" as const,
+  variables: [],
+  env: null,
+  responsibleUserId: "user-board",
+};
+
+const SAMPLE_REVISIONS: RoutineRevision[] = [
+  {
+    id: "routine-revision-2",
+    companyId: ROUTINES_COMPANY_ID,
+    routineId: "routine-digest",
+    revisionNumber: 2,
+    title: "Weekly digest",
+    description: REVISION_ROUTINE.description,
+    snapshot: { version: 1, routine: REVISION_ROUTINE, triggers: [{
+      id: SAMPLE_TRIGGER.id,
+      kind: "schedule",
+      label: SAMPLE_TRIGGER.label,
+      enabled: true,
+      cronExpression: SAMPLE_TRIGGER.cronExpression,
+      timezone: SAMPLE_TRIGGER.timezone,
+      publicId: null,
+      signingMode: null,
+      replayWindowSec: null,
+    }] },
+    changeSummary: "Use the weekly schedule",
+    restoredFromRevisionId: null,
+    createdByAgentId: null,
+    createdByUserId: "user-board",
+    createdByRunId: null,
+    createdAt: new Date("2026-09-14T08:00:00Z"),
+  },
+  {
+    id: "routine-revision-1",
+    companyId: ROUTINES_COMPANY_ID,
+    routineId: "routine-digest",
+    revisionNumber: 1,
+    title: "Weekly summary",
+    description: "Prepare a short weekly summary.",
+    snapshot: {
+      version: 1,
+      routine: { ...REVISION_ROUTINE, title: "Weekly summary", description: "Prepare a short weekly summary.", concurrencyPolicy: "coalesce_if_active" },
+      triggers: [],
+    },
+    changeSummary: "Initial routine",
+    restoredFromRevisionId: null,
+    createdByAgentId: null,
+    createdByUserId: "user-board",
+    createdByRunId: null,
+    createdAt: new Date("2026-09-01T08:00:00Z"),
+  },
+];
 type RoutinesScenarioState = "populated" | "empty" | "loading" | "error";
 
 function RoutinesScenario({
@@ -69,7 +214,7 @@ function RoutinesScenario({
   state?: RoutinesScenarioState;
   detail?: boolean;
   populatedHistory?: boolean;
-  section?: "" | "triggers" | "runs";
+  section?: "" | "triggers" | "runs" | "activity" | "history" | "delivery" | "audit-activity" | "audit-runs";
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -79,7 +224,11 @@ function RoutinesScenario({
   const [initialPath] = useState(location.pathname);
 
   const routePrefix = "/PAP/routines";
-  const target = `${routePrefix}${detail ? `/routine-digest${section ? `/${section}` : ""}` : ""}`;
+  const auditSection = section === "audit-activity" || section === "audit-runs";
+  const target = auditSection
+    ? `/PAP/activity${section === "audit-runs" ? "/runs" : ""}?entityType=routine&entityId=routine-digest`
+    : `${routePrefix}${detail ? `/routine-digest${section ? `/${section}` : ""}` : ""}`;
+  const targetPath = new URL(target, window.location.origin).pathname;
 
   useEffect(() => {
     const originalFetch = window.fetch;
@@ -120,17 +269,20 @@ function RoutinesScenario({
       if (detailMatch) {
         const routine = SAMPLE_ROUTINES.find((item) => item.id === detailMatch[1]);
         if (!routine) return Response.json({ error: "Sample routine not found." }, { status: 404 });
-        if (detailMatch[2] === "runs") return Response.json(populatedHistory ? [SAMPLE_RUN] : []);
-        if (detailMatch[2] === "revisions") return Response.json([]);
+        if (detailMatch[2] === "runs") return Response.json(populatedHistory ? SAMPLE_RUNS : []);
+        if (detailMatch[2] === "revisions") return Response.json(populatedHistory ? SAMPLE_REVISIONS : []);
         if (!detailMatch[2]) {
           if (state === "loading") return new Promise<Response>(() => {});
           if (state === "error") return Response.json({ error: "Sample routine could not be loaded." }, { status: 503 });
-          const result: RoutineDetailData = { ...routine, triggers: populatedHistory ? [SAMPLE_TRIGGER] : [], recentRuns: populatedHistory ? [SAMPLE_RUN] : [], activeIssue: null,
+          const result: RoutineDetailData = { ...routine, latestRevisionId: populatedHistory ? SAMPLE_REVISIONS[0].id : null, latestRevisionNumber: populatedHistory ? SAMPLE_REVISIONS[0].revisionNumber : 1, triggers: populatedHistory ? [SAMPLE_TRIGGER] : [], recentRuns: populatedHistory ? SAMPLE_RUNS : [], activeIssue: null,
             project: null, assignee: null, parentIssue: null, description: "Prepare the weekly operational digest from completed work." };
           return Response.json(result);
         }
       }
-      if (url.pathname === `/api/companies/${ROUTINES_COMPANY_ID}/activity` && url.searchParams.get("entityType") === "routine") return Response.json([]);
+      if (url.pathname === `/api/companies/${ROUTINES_COMPANY_ID}/activity`) {
+        const entityId = url.searchParams.get("entityId");
+        return Response.json(populatedHistory && (!entityId || entityId === "routine-digest" || entityId === SAMPLE_TRIGGER.id || SAMPLE_RUNS.some((run) => run.id === entityId)) ? SAMPLE_ACTIVITY : []);
+      }
 
       // Folders for routines; shape: { folders: [...], allCount, unfiledCount }.
       const companyFoldersMatch = url.pathname.match(/^\/api\/companies\/([^/]+)\/folders$/);
@@ -189,8 +341,8 @@ function RoutinesScenario({
   }, [selectedCompanyId, setSelectedCompanyId]);
 
   useEffect(() => {
-    if (location.pathname === initialPath && initialPath !== target) navigate(target, { replace: true });
-  }, [initialPath, location.pathname, navigate, target]);
+    if (location.pathname === initialPath && initialPath !== targetPath) navigate(target, { replace: true });
+  }, [initialPath, location.pathname, navigate, target, targetPath]);
 
   if (!ready || selectedCompanyId !== ROUTINES_COMPANY_ID) return null;
 
@@ -202,6 +354,8 @@ function RoutinesScenario({
         <Route path="/:companyPrefix" element={<LayoutComponent />}>
           <Route path="routines" element={streamlined ? <Routines /> : <ProductionRoutines />} />
           <Route path="routines/:routineId/:section?" element={streamlined ? <RoutineDetail /> : <ProductionRoutineDetail />} />
+          <Route path="activity" element={<AuditHub section="activity" />} />
+          <Route path="activity/runs" element={<AuditHub section="runs" />} />
           <Route path="*" element={<p>Preview navigation: {location.pathname}</p>} />
         </Route>
       </Routes>
@@ -219,6 +373,12 @@ type Story = StoryObj<typeof meta>;
 
 export const TriggersPopulatedProduction: Story = { args: { detail: true, populatedHistory: true, streamlined: false, section: "triggers" } };
 export const RunsPopulatedProduction: Story = { args: { detail: true, populatedHistory: true, streamlined: false, section: "runs" } };
+export const RunsPopulated: Story = { args: { detail: true, populatedHistory: true, section: "runs" } };
+export const ActivityPopulated: Story = { args: { detail: true, populatedHistory: true, section: "activity" } };
+export const HistoryPopulated: Story = { args: { detail: true, populatedHistory: true, section: "history" } };
+export const DeliveryPopulated: Story = { args: { detail: true, populatedHistory: true, section: "delivery" } };
+export const AuditActivityPopulated: Story = { args: { populatedHistory: true, section: "audit-activity" } };
+export const AuditRunsPopulated: Story = { args: { populatedHistory: true, section: "audit-runs" } };
 export const DetailPopulated: Story = { args: { detail: true, populatedHistory: true } };
 export const DetailPopulatedProduction: Story = { args: { detail: true, populatedHistory: true, streamlined: false } };
 export const Detail: Story = { args: { detail: true } };

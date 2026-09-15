@@ -10,7 +10,8 @@ import { ProfileSettings } from "@/pages/ProfileSettings";
 import { CompanyAccess } from "@/pages/CompanyAccess";
 import { CompanyEnvironments } from "@/pages/CompanyEnvironments";
 import { PluginSettings } from "@/pages/PluginSettings";
-import type { PluginRecord } from "@paperclipai/shared";
+import type { Environment, EnvironmentCapabilities, PluginRecord } from "@paperclipai/shared";
+import type { PluginDashboardData, PluginHealthCheckResult } from "@/api/plugins";
 import { AdapterManager } from "@/pages/AdapterManager";
 import { PluginManager } from "@/pages/PluginManager";
 import { InstanceAccess } from "@/pages/InstanceAccess";
@@ -21,15 +22,90 @@ import { queryKeys } from "@/lib/queryKeys";
 
 const previewPlugin: PluginRecord = {
   id: "warm-settings-plugin", pluginKey: "example.settings-preview", packageName: "@example/settings-preview",
-  version: "1.0.0", apiVersion: 1, status: "disabled", categories: [], installOrder: null,
+  version: "1.0.0", apiVersion: 1, status: "ready", categories: ["automation"], installOrder: null,
   packagePath: null, lastError: null, installedAt: new Date("2026-09-14"), updatedAt: new Date("2026-09-14"),
   manifestJson: { id: "example.settings-preview", apiVersion: 1, version: "1.0.0", displayName: "Settings sample",
-    description: "Read-only host settings preview.", author: "Preview", categories: [], capabilities: [],
+    description: "Read-only host settings preview.", author: "Preview", categories: ["automation"], capabilities: ["issues.read"],
     entrypoints: { worker: "unused-preview.js" },
     instanceConfigSchema: { type: "object", properties: { label: { type: "string", title: "Label" } } },
   },
 };
+const previewEnvironments: Environment[] = [
+  {
+    id: "environment-local",
+    name: "Local host",
+    description: "Runs on this Paperclip host.",
+    driver: "local",
+    status: "active",
+    config: {},
+    envVars: {},
+    metadata: null,
+    createdAt: new Date("2026-09-01T00:00:00Z"),
+    updatedAt: new Date("2026-09-14T00:00:00Z"),
+  },
+  {
+    id: "environment-ssh",
+    name: "Review workstation",
+    description: "Remote workspace for release reviews.",
+    driver: "ssh",
+    status: "active",
+    config: { host: "review.example.invalid", port: 22, username: "reviewer", remoteWorkspacePath: "/srv/review", privateKey: null, privateKeySecretRef: null, knownHosts: null, strictHostKeyChecking: true },
+    envVars: {},
+    metadata: null,
+    createdAt: new Date("2026-09-01T00:00:00Z"),
+    updatedAt: new Date("2026-09-14T00:00:00Z"),
+  },
+  {
+    id: "environment-sandbox",
+    name: "Daytona preview",
+    description: "Disposable browser-test environment.",
+    driver: "sandbox",
+    status: "active",
+    config: { provider: "daytona", image: "node-25", reuseLease: true, streamRunLogs: true },
+    envVars: {},
+    metadata: null,
+    createdAt: new Date("2026-09-01T00:00:00Z"),
+    updatedAt: new Date("2026-09-14T00:00:00Z"),
+  },
+];
 
+const previewEnvironmentCapabilities: EnvironmentCapabilities = {
+  adapters: [],
+  drivers: { local: "supported", ssh: "supported", sandbox: "supported", plugin: "unsupported" },
+  sandboxProviders: {
+    fake: {
+      status: "unsupported", supportsSavedProbe: false, supportsUnsavedProbe: false, supportsRunExecution: false,
+      supportsReusableLeases: false, supportsInteractiveSetup: false, interactiveSetupConnectionTypes: [],
+      supportsTemplateCapture: false, supportsTemplateDelete: false, supportsLoginPty: false,
+      displayName: "Fake", source: "builtin",
+    },
+    daytona: {
+      status: "supported", supportsSavedProbe: true, supportsUnsavedProbe: true, supportsRunExecution: true,
+      supportsReusableLeases: true, supportsInteractiveSetup: false, interactiveSetupConnectionTypes: [],
+      supportsTemplateCapture: false, supportsTemplateDelete: false, supportsLoginPty: false,
+      displayName: "Daytona", description: "Disposable sandbox provider for isolated runs.", source: "plugin",
+      pluginKey: "example.daytona", pluginId: "plugin-daytona",
+      configSchema: { type: "object", properties: { image: { type: "string", title: "Image", default: "node-25" } }, required: ["image"] },
+    },
+  },
+};
+
+const previewPluginHealth: PluginHealthCheckResult = {
+  pluginId: previewPlugin.id,
+  status: "ready",
+  healthy: false,
+  checks: [{ name: "Worker heartbeat", passed: true }, { name: "Webhook queue", passed: false, message: "One sample delivery failed." }],
+  lastError: "One sample delivery failed.",
+};
+
+const previewPluginDashboard: PluginDashboardData = {
+  pluginId: previewPlugin.id,
+  worker: { status: "running", pid: 4321, uptime: 3723000, consecutiveCrashes: 0, totalCrashes: 1, pendingRequests: 2, lastCrashAt: Date.parse("2026-09-13T00:00:00Z"), nextRestartAt: null },
+  recentJobRuns: [{ id: "job-run-preview", jobId: "job-preview", jobKey: "nightly-review", trigger: "schedule", status: "succeeded", durationMs: 4200, error: null, startedAt: "2026-09-14T08:00:00Z", finishedAt: "2026-09-14T08:00:04.200Z", createdAt: "2026-09-14T08:00:00Z" }],
+  recentWebhookDeliveries: [{ id: "delivery-preview", webhookKey: "review.created", status: "failed", durationMs: 250, error: "Sample endpoint unavailable.", startedAt: "2026-09-14T08:02:00Z", finishedAt: "2026-09-14T08:02:00.250Z", createdAt: "2026-09-14T08:02:00Z" }],
+  health: previewPluginHealth,
+  checkedAt: "2026-09-14T08:03:00Z",
+};
 const adminUsers: AdminUserDirectoryEntry[] = [{
   id: "user-board", name: "Board Operator", email: "board@paperclip.local", image: null,
   isInstanceAdmin: true, activeCompanyMembershipCount: 1,
@@ -55,7 +131,7 @@ const members: CompanyMembersResponse = {
   access: { currentUserRole: "owner", canManageMembers: true, canInviteUsers: true, canApproveJoinRequests: false },
 };
 
-function SettingsScenario({ profile = false, membersPage = false, secretsPage = false, experimentalPage = false, instanceAccessPage = false, pluginsPage = false, pluginDetails = false, adaptersPage = false, environmentsPage = false, hiddenMembers = false, state = "populated" }: {
+function SettingsScenario({ profile = false, membersPage = false, secretsPage = false, experimentalPage = false, instanceAccessPage = false, pluginsPage = false, pluginDetails = false, adaptersPage = false, environmentsPage = false, environmentMode = "list", hiddenMembers = false, state = "populated" }: {
   profile?: boolean;
   membersPage?: boolean;
   secretsPage?: boolean;
@@ -65,8 +141,9 @@ function SettingsScenario({ profile = false, membersPage = false, secretsPage = 
   pluginDetails?: boolean;
   adaptersPage?: boolean;
   environmentsPage?: boolean;
+  environmentMode?: "list" | "create" | "edit";
   hiddenMembers?: boolean;
-  state?: "populated" | "empty" | "loading" | "error" | "forbidden" | "retry";
+  state?: "populated" | "empty" | "loading" | "error" | "forbidden" | "retry" | "diagnosticsError";
 }) {
   const client = useQueryClient();
   const navigate = useNavigate();
@@ -88,18 +165,32 @@ function SettingsScenario({ profile = false, membersPage = false, secretsPage = 
       if (environmentsPage && url.pathname === "/api/companies/company-storybook/environments") {
         if (state === "loading") return new Promise<Response>(() => {});
         if (state === "error") return Response.json({ error: "Sample environments unavailable." }, { status: 503 });
-        return Response.json([]);
+        return Response.json(state === "empty" ? [] : previewEnvironments);
       }
-      if (environmentsPage && url.pathname === "/api/companies/company-storybook/environments/capabilities") return Response.json({ adapters: [], sandboxProviders: {} });
+      if (environmentsPage && url.pathname === "/api/companies/company-storybook/environments/capabilities") return Response.json(previewEnvironmentCapabilities);
+      if (environmentsPage && url.pathname === "/api/environments/environment-ssh/secret-refs") return Response.json({ refs: [] });
+      if (environmentsPage && url.pathname === "/api/environments/environment-sandbox/secret-refs") return Response.json({ refs: [] });
+      if (environmentsPage && url.pathname === "/api/instance/settings") return Response.json({ defaultEnvironmentId: "environment-ssh" });
       if (url.pathname === `/api/plugins/${previewPlugin.id}`) {
         if (state === "loading") return new Promise<Response>(() => {});
         if (state === "error") return Response.json({ error: "Sample plugin details unavailable." }, { status: 503 });
         return Response.json(previewPlugin);
       }
-      if (url.pathname === `/api/plugins/${previewPlugin.id}/dashboard`) return Response.json(null);
+      if (url.pathname === `/api/plugins/${previewPlugin.id}/dashboard`) {
+        if (state === "diagnosticsError") return Response.json({ error: "Sample dashboard unavailable." }, { status: 503 });
+        return Response.json(previewPluginDashboard);
+      }
+      if (url.pathname === `/api/plugins/${previewPlugin.id}/health`) {
+        if (state === "diagnosticsError") return Response.json({ error: "Sample health unavailable." }, { status: 503 });
+        return Response.json(previewPluginHealth);
+      }
+      if (url.pathname === `/api/plugins/${previewPlugin.id}/logs`) {
+        if (state === "diagnosticsError") return Response.json({ error: "Sample logs unavailable." }, { status: 503 });
+        return Response.json([{ id: "plugin-log-preview", pluginId: previewPlugin.id, level: "warn", message: "Sample queue retry scheduled.", meta: null, createdAt: "2026-09-14T08:04:00Z" }]);
+      }
       if (url.pathname === `/api/plugins/${previewPlugin.id}/config`) return state === "forbidden"
         ? Response.json({ error: "Sample configuration unavailable." }, { status: 403 })
-        : Response.json(null);
+        : Response.json({ configJson: { label: "Operations preview" } });
       if (adaptersPage && url.pathname === "/api/adapters" && state !== "populated") {
         if (state === "loading") return new Promise<Response>(() => {});
         if (state === "error") return Response.json({ error: "Sample adapter list unavailable." }, { status: 503 });
@@ -155,8 +246,13 @@ function SettingsScenario({ profile = false, membersPage = false, secretsPage = 
     };
   }, [client, state, hiddenMembers, secretsPage, pluginsPage, adaptersPage, environmentsPage]);
   useEffect(() => {
-    if (location.pathname === initialPath) navigate(`/PAP/company/settings${environmentsPage ? "/instance/environments" : pluginDetails ? `/instance/plugins/${previewPlugin.id}` : adaptersPage ? "/instance/adapters" : pluginsPage ? "/instance/plugins" : instanceAccessPage ? "/instance/access" : experimentalPage ? "/instance/experimental" : secretsPage ? "/secrets" : membersPage ? "/members" : profile ? "/instance/profile" : ""}`, { replace: true });
-  }, [initialPath, location.pathname, navigate, profile, membersPage, secretsPage, experimentalPage, instanceAccessPage, pluginsPage, pluginDetails, adaptersPage, environmentsPage]);
+    const environmentSuffix = environmentMode === "create"
+      ? "/instance/environments/new"
+      : environmentMode === "edit"
+        ? "/instance/environments/environment-ssh/edit"
+        : "/instance/environments";
+    if (location.pathname === initialPath) navigate(`/PAP/company/settings${environmentsPage ? environmentSuffix : pluginDetails ? `/instance/plugins/${previewPlugin.id}` : adaptersPage ? "/instance/adapters" : pluginsPage ? "/instance/plugins" : instanceAccessPage ? "/instance/access" : experimentalPage ? "/instance/experimental" : secretsPage ? "/secrets" : membersPage ? "/members" : profile ? "/instance/profile" : ""}`, { replace: true });
+  }, [initialPath, location.pathname, navigate, profile, membersPage, secretsPage, experimentalPage, instanceAccessPage, pluginsPage, pluginDetails, adaptersPage, environmentsPage, environmentMode]);
   if (!ready) return null;
   return <PluginLauncherProvider><Routes>
     <Route path="/:companyPrefix" element={<Layout />}>
@@ -164,6 +260,7 @@ function SettingsScenario({ profile = false, membersPage = false, secretsPage = 
       <Route element={<HiddenSettingsPageGate pageKey="instance.environments" />}>
         <Route path="company/settings/instance/environments" element={<CompanyEnvironments />} />
         <Route path="company/settings/instance/environments/new" element={<CompanyEnvironments mode="create" />} />
+        <Route path="company/settings/instance/environments/:environmentId/edit" element={<CompanyEnvironments mode="edit" />} />
       </Route>
       <Route element={<HiddenSettingsPageGate pageKey="instance.adapters" />}>
         <Route path="company/settings/instance/adapters" element={<AdapterManager />} />
@@ -194,10 +291,14 @@ function SettingsScenario({ profile = false, membersPage = false, secretsPage = 
 const meta = { title: "Pages/Warm Workspace/Settings", component: SettingsScenario, parameters: { layout: "fullscreen" } } satisfies Meta<typeof SettingsScenario>;
 export default meta;
 type Story = StoryObj<typeof meta>;
-export const EnvironmentsEmpty: Story = { args: { environmentsPage: true } };
+export const EnvironmentsEmpty: Story = { args: { environmentsPage: true, state: "empty" } };
+export const EnvironmentsPopulated: Story = { args: { environmentsPage: true } };
+export const EnvironmentCreatePopulated: Story = { args: { environmentsPage: true, environmentMode: "create" } };
+export const EnvironmentEditPopulated: Story = { args: { environmentsPage: true, environmentMode: "edit" } };
 export const EnvironmentsError: Story = { args: { environmentsPage: true, state: "error" } };
 export const EnvironmentsLoading: Story = { args: { environmentsPage: true, state: "loading" } };
 export const PluginDetails: Story = { args: { pluginDetails: true } };
+export const PluginDiagnosticsError: Story = { args: { pluginDetails: true, state: "diagnosticsError" } };
 export const PluginDetailsError: Story = { args: { pluginDetails: true, state: "error" } };
 export const PluginConfigError: Story = { args: { pluginDetails: true, state: "forbidden" } };
 export const AdaptersPage: Story = { args: { adaptersPage: true } };

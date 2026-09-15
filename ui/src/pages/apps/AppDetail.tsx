@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2, Pencil } from "lucide-react";
+import { Check, Loader2, Pencil, RefreshCw } from "lucide-react";
 import type {
   ToolApplication,
   ToolConnection,
@@ -468,7 +468,18 @@ export function AppDetail() {
     return (
       <div className="max-w-3xl p-6">
         {connectionQuery.error ? (
-          <p role="alert" className="text-sm text-destructive">{connectionQuery.error.message}</p>
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 text-sm text-destructive">
+            <span>{connectionQuery.error.message}</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => { void connectionQuery.refetch(); }}
+              disabled={connectionQuery.isFetching}
+            >
+              {connectionQuery.isFetching ? "Retrying…" : "Retry connection"}
+            </Button>
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">We couldn't find that app.</p>
         )}
@@ -494,7 +505,20 @@ export function AppDetail() {
 
   return (
     <div className="max-w-4xl space-y-10 pb-12">
-      {connectionQuery.error && <p role="alert" className="text-sm text-destructive">{connectionQuery.error.message}</p>}
+      {connectionQuery.error && (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 text-sm text-destructive">
+          <span>{connectionQuery.error.message}</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => { void connectionQuery.refetch(); }}
+            disabled={connectionQuery.isFetching}
+          >
+            {connectionQuery.isFetching ? "Retrying…" : "Retry connection"}
+          </Button>
+        </div>
+      )}
       <AppDetailHeader
         appName={appName}
         connection={connection}
@@ -516,6 +540,8 @@ export function AppDetail() {
           if (next && next !== appName) rename.mutate(next);
           else setRenaming(false);
         }}
+        connectionRefreshing={connectionQuery.isFetching}
+        onRefreshConnection={() => { void connectionQuery.refetch(); }}
       />
 
       {status.tone === "attention" && connection.requiresReauthorization === false && (
@@ -647,6 +673,8 @@ function AppDetailHeader({
   onRenameStart,
   onRenameCancel,
   onRenameSubmit,
+  connectionRefreshing,
+  onRefreshConnection,
 }: {
   appName: string;
   connection: ToolConnection;
@@ -662,6 +690,8 @@ function AppDetailHeader({
   onRenameStart: () => void;
   onRenameCancel: () => void;
   onRenameSubmit: (value: string) => void;
+  connectionRefreshing: boolean;
+  onRefreshConnection: () => void;
 }) {
   const unverifiedHost = unverifiedRemoteHost(connection);
   return (
@@ -709,6 +739,16 @@ function AppDetailHeader({
                 onClick={onRenameStart}
               >
                 <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground"
+                aria-label="Refresh connection"
+                onClick={onRefreshConnection}
+                disabled={connectionRefreshing}
+              >
+                <RefreshCw className={cn("h-3.5 w-3.5", connectionRefreshing && "animate-spin")} />
               </Button>
             </div>
           )}

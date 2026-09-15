@@ -669,6 +669,14 @@ describe("SkillStudio editor frontmatter", () => {
     expect(node.textContent).not.toContain("No test runs yet.");
   });
 
+  it("announces a test run detail read failure instead of claiming it is missing", async () => {
+    routeState.search = "?run=run-1";
+    mockCompanySkillsApi.testRunDetail.mockRejectedValue(new Error("Run details unavailable."));
+    const node = await renderStudio();
+    await waitFor(() => expect(node.querySelector('[role="alert"]')?.textContent).toContain("Run details unavailable."));
+    expect(node.textContent).not.toContain("Run not found.");
+  });
+
   it("does not claim empty version history when the request fails", async () => {
     mockCompanySkillsApi.versions.mockRejectedValue(new Error("Version history unavailable."));
     const node = await renderStudio();

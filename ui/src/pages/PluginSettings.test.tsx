@@ -48,7 +48,10 @@ vi.mock("@/plugins/slots", () => ({
 }));
 
 vi.mock("@/components/PageTabBar", () => ({
-  PageTabBar: () => null,
+  PageTabBar: ({ items, onValueChange }: {
+    items: Array<{ value: string; label: string }>;
+    onValueChange?: (value: string) => void;
+  }) => <>{items.map((item) => <button key={item.value} onClick={() => onValueChange?.(item.value)}>{item.label}</button>)}</>,
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -188,6 +191,22 @@ describe("PluginSettings", () => {
       expect(container.querySelector('input')).toBe(input);
       expect(input.value).toBe("Local draft");
     } finally { await act(async () => root.unmount()); client.clear(); }
+  });
+
+  it("announces diagnostic read failures on the status surface", async () => {
+    mockPluginsApi.get.mockResolvedValue(basePlugin({ status: "ready" }));
+    mockPluginsApi.health.mockRejectedValue(new Error("Health unavailable."));
+    mockPluginsApi.dashboard.mockRejectedValue(new Error("Dashboard unavailable."));
+    mockPluginsApi.logs.mockRejectedValue(new Error("Logs unavailable."));
+    const root = await renderSettings(container);
+    try {
+      const status = [...container.querySelectorAll("button")].find((button) => button.textContent === "Status");
+      await act(async () => status?.click());
+      await vi.waitFor(() => expect(container.textContent).toContain("Dashboard unavailable."));
+      expect(container.textContent).toContain("Health unavailable.");
+      expect(container.textContent).toContain("Logs unavailable.");
+      expect(container.textContent).not.toContain("Runtime diagnostics are unavailable right now.");
+    } finally { await act(async () => root.unmount()); }
   });
 
   it("does not expose an empty editable configuration after its read fails", async () => {

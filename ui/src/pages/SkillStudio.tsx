@@ -19,6 +19,7 @@ import {
   Pencil,
   Play,
   Plus,
+  RefreshCw,
   RotateCcw,
   Share2,
   Trash2,
@@ -1030,6 +1031,8 @@ function StudioShell({
       inputs={inputs}
       loading={inputsQuery.isLoading}
       error={inputsQuery.error}
+      refreshing={inputsQuery.isFetching}
+      onRefresh={() => { void inputsQuery.refetch(); }}
       savedInputDraft={savedInputDraft}
       setSavedInputDraft={setSavedInputDraft}
       selectedInputId={selectedInputId}
@@ -1537,6 +1540,21 @@ function SkillPane({
             {skill.currentVersion ? ` · v${skill.currentVersion.revisionNumber}` : ""}
           </span>
           <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Refresh file"
+                  disabled={fileQuery.isFetching}
+                  onClick={() => void fileQuery.refetch()}
+                >
+                  <RefreshCw className={cn("h-4 w-4", fileQuery.isFetching && "animate-spin")} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Refresh file</TooltipContent>
+            </Tooltip>
             {readOnly ? (
               <Badge variant="secondary">Read-only</Badge>
             ) : (
@@ -1554,7 +1572,18 @@ function SkillPane({
           </div>
         </div>
         {fileQuery.error && (
-          <p role="alert" className="px-3 py-2 text-sm text-destructive">{fileQuery.error.message}</p>
+          <div role="alert" className="flex items-center justify-between gap-3 border-b border-border px-3 py-2 text-sm text-destructive">
+            <span>{fileQuery.error.message}</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={fileQuery.isFetching}
+              onClick={() => void fileQuery.refetch()}
+            >
+              {fileQuery.isFetching ? "Retrying…" : "Retry"}
+            </Button>
+          </div>
         )}
         {fileQuery.data && isMarkdown && markdownBlock?.hasFrontmatter ? (
           <FrontmatterPanel
@@ -1929,6 +1958,8 @@ function InputPane({
   inputs,
   loading,
   error,
+  refreshing,
+  onRefresh,
   savedInputDraft,
   setSavedInputDraft,
   selectedInputId,
@@ -1943,6 +1974,8 @@ function InputPane({
   inputs: CompanySkillTestInput[];
   loading: boolean;
   error: Error | null;
+  refreshing: boolean;
+  onRefresh: () => void;
   savedInputDraft: SavedInputDraftState;
   setSavedInputDraft: React.Dispatch<React.SetStateAction<SavedInputDraftState>>;
   selectedInputId: string | null;
@@ -2077,6 +2110,21 @@ function InputPane({
         <div className="flex items-center gap-1">
           <Tooltip>
             <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Refresh inputs"
+                disabled={refreshing}
+                onClick={onRefresh}
+              >
+                <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Refresh inputs</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
               <Button variant="ghost" size="icon-sm" onClick={selectAdHocInput} aria-label="New input">
                 <Plus className="h-4 w-4" />
               </Button>
@@ -2086,7 +2134,14 @@ function InputPane({
         </div>
       }
     >
-      {error && <p role="alert" className="px-3 py-2 text-sm text-destructive">{error.message}</p>}
+      {error && (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-3 py-2 text-sm text-destructive">
+          <span>{error.message}</span>
+          <Button type="button" variant="outline" size="sm" onClick={onRefresh} disabled={refreshing}>
+            {refreshing ? "Trying again…" : "Try again"}
+          </Button>
+        </div>
+      )}
       {collapsed ? (
         <button
           type="button"
@@ -2549,6 +2604,21 @@ function RunsPane({
       title="Test runs"
       action={
         <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Refresh runs"
+                disabled={runsQuery.isFetching}
+                onClick={() => { void runsQuery.refetch(); }}
+              >
+                <RefreshCw className={cn("h-4 w-4", runsQuery.isFetching && "animate-spin")} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Refresh runs</TooltipContent>
+          </Tooltip>
           <AgentPicker
             agents={agents}
             selectedAgent={selectedAgent}
@@ -2612,7 +2682,14 @@ function RunsPane({
           </div>
         )}
         <div className="min-h-0 flex-1 overflow-auto p-3">
-          {runsQuery.error && <p role="alert" className="text-sm text-destructive">{runsQuery.error.message}</p>}
+          {runsQuery.error && (
+            <div role="alert" className="mb-2 flex flex-wrap items-center justify-between gap-3 text-sm text-destructive">
+              <span>{runsQuery.error.message}</span>
+              <Button type="button" variant="outline" size="sm" onClick={() => { void runsQuery.refetch(); }} disabled={runsQuery.isFetching}>
+                {runsQuery.isFetching ? "Trying again…" : "Try again"}
+              </Button>
+            </div>
+          )}
           {runsQuery.isLoading ? (
             <div className="text-xs text-muted-foreground">Loading runs…</div>
           ) : runs.length === 0 ? (
@@ -3145,7 +3222,18 @@ function RunDetailView({
   if (!detail) {
     return (
       <PaneScaffold title="Run" action={<BackButton onBack={onBack} />}>
-        <div className="p-3 text-xs text-muted-foreground">Run not found.</div>
+        <div className="space-y-3 p-3 text-xs text-muted-foreground">
+          {detailQuery.error ? (
+            <div role="alert" className="flex flex-wrap items-center justify-between gap-3 text-sm text-destructive">
+              <span>{detailQuery.error instanceof Error ? detailQuery.error.message : "Couldn't load this run."}</span>
+              <Button type="button" variant="outline" size="sm" onClick={() => { void detailQuery.refetch(); }} disabled={detailQuery.isFetching}>
+                {detailQuery.isFetching ? "Trying again…" : "Try again"}
+              </Button>
+            </div>
+          ) : (
+            <p>Run not found.</p>
+          )}
+        </div>
       </PaneScaffold>
     );
   }
@@ -3161,6 +3249,14 @@ function RunDetailView({
   return (
     <PaneScaffold title="Run" action={<BackButton onBack={onBack} />}>
       <div className="min-h-0 flex-1 space-y-3 overflow-auto p-3">
+        {detailQuery.error && (
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 text-sm text-destructive">
+            <span>{detailQuery.error instanceof Error ? detailQuery.error.message : "Couldn't refresh this run."}</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => { void detailQuery.refetch(); }} disabled={detailQuery.isFetching}>
+              {detailQuery.isFetching ? "Trying again…" : "Try again"}
+            </Button>
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={runBadgeStatus(detail.status)} />
           <Identity name={agentName} size="xs" />
@@ -3527,10 +3623,34 @@ function VersionHistorySheet({
         }}
       >
         <SheetHeader>
-          <SheetTitle>Version history</SheetTitle>
+          <div className="flex items-center justify-between gap-2">
+            <SheetTitle>Version history</SheetTitle>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Refresh versions"
+                  disabled={versionsQuery.isFetching}
+                  onClick={() => { void versionsQuery.refetch(); }}
+                >
+                  <RefreshCw className={cn("h-4 w-4", versionsQuery.isFetching && "animate-spin")} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Refresh versions</TooltipContent>
+            </Tooltip>
+          </div>
         </SheetHeader>
         <div className="mt-3 space-y-2 overflow-auto">
-          {versionsQuery.error && <p role="alert" className="text-sm text-destructive">{versionsQuery.error.message}</p>}
+          {versionsQuery.error && (
+            <div role="alert" className="flex flex-wrap items-center justify-between gap-3 text-sm text-destructive">
+              <span>{versionsQuery.error.message}</span>
+              <Button type="button" variant="outline" size="sm" onClick={() => { void versionsQuery.refetch(); }} disabled={versionsQuery.isFetching}>
+                {versionsQuery.isFetching ? "Trying again…" : "Try again"}
+              </Button>
+            </div>
+          )}
           {versionsQuery.isLoading ? (
             <div className="text-xs text-muted-foreground">Loading versions…</div>
           ) : versions.length === 0 ? (

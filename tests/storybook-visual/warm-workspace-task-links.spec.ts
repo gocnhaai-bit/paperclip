@@ -69,6 +69,52 @@ test("task switching and router back/forward restore the plan without leaking it
   await expect(panel.getByRole("heading", { name: "Workspace layout review", exact: true })).toHaveCount(0);
 });
 
+const TASK_DETAIL_FIXTURE_TITLE = "Create super-detailed storybooks for the project";
+
+test("native browser Back returns from an attachment to the same task panel", async ({ page }) => {
+  await page.goto("/iframe.html?id=pages-warm-workspace--task-detail-chat-shell&viewMode=story");
+  const taskHeading = page.getByRole("heading", { name: TASK_DETAIL_FIXTURE_TITLE, exact: true });
+  await expect(taskHeading).toBeVisible();
+  const link = page.getByRole("link", { name: "Open preview: Workspace layout review notes", exact: true });
+  await link.click();
+  await expect(page).toHaveURL(new RegExp(`${contentPath}$`));
+  await page.goBack();
+  await expect(taskHeading).toBeVisible();
+  await page.getByRole("link", { name: "Open Plan revision 1", exact: true }).click();
+  await expect(page.locator('section[aria-label="Side panel"]').getByRole("heading", { name: "Workspace layout review", exact: true })).toBeVisible();
+});
+test("long task properties remain contained on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/iframe.html?id=pages-warm-workspace--task-detail-long-content&viewMode=story&globals=theme:dark");
+  const properties = page.getByRole("button", { name: "Properties", exact: true }).first();
+  await properties.click();
+  const sheet = page.getByRole("dialog");
+  await expect(sheet).toBeVisible();
+  for (const value of await sheet.locator('[data-property-value="true"]').all()) {
+    await expect.poll(() => value.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.left >= 0 && rect.right <= innerWidth;
+    })).toBe(true);
+  }
+  await page.keyboard.press("Escape");
+  if (await sheet.isVisible()) await page.keyboard.press("Escape");
+  await expect(properties).toBeFocused();
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+});
+
+test("denied task Hide rolls back optimistic state", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/iframe.html?id=pages-warm-workspace--task-detail-long-content&viewMode=story&globals=theme:dark");
+  const actions = page.getByRole("button", { name: "More task actions", exact: true });
+  await actions.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Add subtask", { exact: true })).toBeVisible();
+  await page.getByText("Hide this task", { exact: true }).last().click();
+  await expect(page.getByText("Task update failed", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "WorkspaceReview".repeat(24), exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(1440);
+});
+
 test("work-product link opens the local attachment and download returns its exact bytes", async ({ page, request }) => {
   await page.goto("/iframe.html?id=pages-warm-workspace--task-detail-chat-shell&viewMode=story");
   const link = page.getByRole("link", { name: "Open preview: Workspace layout review notes", exact: true });

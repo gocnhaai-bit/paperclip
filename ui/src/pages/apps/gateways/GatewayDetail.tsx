@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Send } from "lucide-react";
 import type { ToolMcpGatewayTokenCreated } from "@paperclipai/shared";
@@ -36,6 +36,16 @@ export function GatewayDetail() {
   const [snippetOpen, setSnippetOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [createdTokens, setCreatedTokens] = useState<ToolMcpGatewayTokenCreated[]>([]);
+  const snippetButtonRef = useRef<HTMLButtonElement>(null);
+  const editButtonRef = useRef<HTMLButtonElement>(null);
+
+  const closeAndRestoreFocus = (setOpen: (open: boolean) => void, target: React.RefObject<HTMLButtonElement | null>) =>
+    (open: boolean) => {
+      setOpen(open);
+      if (!open) {
+        window.requestAnimationFrame(() => target.current?.focus());
+      }
+    };
 
   const activeTab: GatewayTabKey | null = isGatewayTabKey(tab) ? tab : null;
 
@@ -176,11 +186,11 @@ export function GatewayDetail() {
           <CopyableGatewayUrl endpointPath={gateway.endpointPath} className="mt-1 max-w-xl" />
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setEditing(true)}>
+          <Button ref={editButtonRef} variant="outline" onClick={() => setEditing(true)}>
             <Pencil className="mr-1.5 h-4 w-4" />
             Edit
           </Button>
-          <Button onClick={() => setSnippetOpen(true)}>
+          <Button ref={snippetButtonRef} onClick={() => setSnippetOpen(true)}>
             <Send className="mr-1.5 h-4 w-4" />
             Client snippets
           </Button>
@@ -237,7 +247,7 @@ export function GatewayDetail() {
       <ConnectClientDialog
         gateway={gateway}
         open={snippetOpen}
-        onOpenChange={setSnippetOpen}
+        onOpenChange={closeAndRestoreFocus(setSnippetOpen, snippetButtonRef)}
         createdTokens={createdTokens}
         onTokenCreated={rememberCreatedToken}
       />
@@ -246,7 +256,7 @@ export function GatewayDetail() {
         gateway={gateway}
         profiles={profilesQuery.data?.profiles ?? []}
         open={editing}
-        onOpenChange={setEditing}
+        onOpenChange={closeAndRestoreFocus(setEditing, editButtonRef)}
       />
     </div>
   );
