@@ -15,6 +15,7 @@ import {
   issueExecutionDecisions,
   issues,
   issueComments,
+  joinRequests,
 } from "@paperclipai/db";
 import {
   AGENT_DEFAULT_MAX_CONCURRENT_RUNS,
@@ -1003,6 +1004,12 @@ export function agentService(db: Db) {
         await tx.delete(agentWakeupRequests).where(eq(agentWakeupRequests.agentId, id));
         await tx.delete(agentApiKeys).where(eq(agentApiKeys.agentId, id));
         await tx.delete(agentRuntimeState).where(eq(agentRuntimeState.agentId, id));
+        // The join request is the audit record of how the agent was admitted, so
+        // it outlives the agent. Clear the back-reference instead of deleting it.
+        await tx
+          .update(joinRequests)
+          .set({ createdAgentId: null })
+          .where(eq(joinRequests.createdAgentId, id));
         const deleted = await tx
           .delete(agents)
           .where(eq(agents.id, id))
