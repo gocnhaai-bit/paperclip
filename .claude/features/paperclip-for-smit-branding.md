@@ -189,3 +189,37 @@ Catalog previews mount real Browse and both CompanySkills variants under the cor
 The blocked-Inbox Storybook preview now seeds the exact `live-descendant-summary` query key consumed by `BlockedInboxView`. The existing Storybook query client uses infinite freshness, so the scoped seed is retained without changing global API fixtures. Loaded and search scenarios show the intended attention rows again; this is component-preview evidence, not full Inbox-route or live filtering acceptance.
 
 `Pages/Warm Workspace/Project Detail Page` mounts the actual project route with existing sample project/task data and the required plugin-launcher provider. It supports local layout and tab-navigation checks, not live project actions or proof of server-side project filtering. The project overview from the previous continuation is retained rather than reimplemented.
+
+## Upstream v2026.916.0 upgrade — 2026-09-17
+
+The branch merged 151 upstream commits up to the stable tag `v2026.916.0`
+(merge commit `1584a7662`, rollback tag `pre-upgrade-v2026916` at `f96ac4b07`).
+Seven files conflicted; every branding and Warm Workspace contract above is
+unchanged.
+
+Two resolutions matter for this contract:
+
+- **Sidebar surface.** Upstream replaced the `bg-sidebar` utility with a
+  `.primary-sidebar-surface` class that also seeds the nested sidebar row
+  variables. The class is adopted, but its `--sidebar-action-rest-surface` now
+  reads `var(--sidebar)` instead of the stock border/background mix, so the warm
+  cream and warm dark surfaces and the opaque mobile drawer both survive.
+- **Dark status icons.** Upstream moved `--status-task-icon-in_progress` to
+  `var(--color-blue-400)`. That hue sits below the 3:1 glyph floor on the
+  lightened warm dark surfaces, so the measured OKLCH values for
+  `in_progress` / `in_queue` / `blocked` are retained and the comment now records
+  why the stock hue is unusable here.
+
+Runtime verified on the rebuilt Docker image: `/api/health` reports
+`authenticated/private`, `bootstrapStatus=ready`, and `commit=1584a7662`; the
+browser title and PWA manifest still read `Paperclip for SMIT`; `plugin-loader`
+reports `2 succeeded, 0 failed` with the external KPI Dashboard worker active.
+Eight database migrations (0272–0279) applied against a verified cold backup with
+no row loss (companies=1, agents=5, projects=9 before and after).
+
+The KPI Dashboard and Agent Studio sources needed no change — the upstream plugin
+SDK delta is additive only, and both build, typecheck and test clean against it
+(58/58 and 90/90).
+
+Two limits: the storybook image comparison for this merge was not run (Sếp opted
+to review the UI directly), and no rollback drill was performed this round.
