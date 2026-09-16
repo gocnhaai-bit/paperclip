@@ -144,7 +144,7 @@ describe("CompanySettingsSidebar", () => {
     expect(container.textContent).not.toContain("Settings");
     expect(container.querySelector('[aria-label="Back from Settings"]')).toBeNull();
     const settingsSurface = container.querySelector('[data-contextual-sidebar="settings"]');
-    expect(settingsSurface?.classList).toContain("bg-sidebar");
+    expect(settingsSurface?.classList).toContain("primary-sidebar-surface");
     expect(container.querySelector('[data-slot="contextual-sidebar-nav"]')?.className).toBe(
       primarySidebarStyles.nav,
     );

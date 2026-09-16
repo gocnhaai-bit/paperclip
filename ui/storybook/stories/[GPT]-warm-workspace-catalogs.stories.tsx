@@ -83,7 +83,7 @@ const previewProfile: ToolProfileWithDetails = {
       id: "warm-profile-entry-list",
       companyId: "company-storybook",
       profileId: "warm-profile",
-      selectorType: "tool",
+      selectorType: "catalog_entry",
       effect: "include",
       applicationId: "warm-application",
       connectionId: null,
@@ -98,7 +98,7 @@ const previewProfile: ToolProfileWithDetails = {
       id: "warm-profile-entry-read",
       companyId: "company-storybook",
       profileId: "warm-profile",
-      selectorType: "tool",
+      selectorType: "catalog_entry",
       effect: "include",
       applicationId: "warm-application",
       connectionId: null,
@@ -391,7 +391,7 @@ const studioRunDetail: CompanySkillTestRunDetail = {
 };
 
 function CatalogScenario({ page = "apps", streamlined = true, state = "populated", readOnly = false }: {
-  page?: "apps" | "apps/connect" | "apps/review" | "apps/warm-connection/permissions" | "apps/warm-connected/permissions" | "apps/warm-connected/services" | "apps/gateways" | "apps/gateways/warm-gateway/overview" | "apps/gateways/warm-gateway/tokens" | "apps/gateways/warm-gateway/activity" | "apps/gateways/warm-gateway/advanced" | "apps/advanced/profiles" | "apps/advanced/profiles/new" | "apps/advanced/profiles/warm-profile" | "apps/advanced/profiles/warm-profile/edit" | "skills" | "skills/studio" | "skills/studio/new" | "skills/studio/sample-unavailable" | "skills/studio/warm-saved-skill";
+  page?: "apps" | "apps/connect" | "apps/review" | "apps/warm-connection/permissions" | "apps/warm-connected/permissions" | "apps/warm-connected/services" | "apps/gateways" | "apps/gateways/warm-gateway/overview" | "apps/gateways/warm-gateway/apps" | "apps/gateways/warm-gateway/tokens" | "apps/gateways/warm-gateway/activity" | "apps/gateways/warm-gateway/advanced" | "apps/advanced/profiles" | "apps/advanced/profiles/new" | "apps/advanced/profiles/warm-profile" | "apps/advanced/profiles/warm-profile/edit" | "skills" | "skills/studio" | "skills/studio/new" | "skills/studio/sample-unavailable" | "skills/studio/warm-saved-skill";
   streamlined?: boolean;
   readOnly?: boolean;
   state?: "populated" | "empty" | "loading" | "error" | "refresh-error" | "services-refresh-error" | "connection-refresh-error" | "input-refresh-error" | "runs-refresh-error" | "versions-refresh-error" | "run-detail-error" | "run-detail-populated" | "policy-denied";
